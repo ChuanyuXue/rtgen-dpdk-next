@@ -19,3 +19,11 @@ cd /home/ubuntu/tool;sudo mkdir /lib/modules/`uname -r`/kernel/drivers/net/igb/;
 
 cd /home/ubuntu/tool
 make -C /lib/modules/`uname -r`/build M=$PWD
+
+
+
+How to use vtune to check the performance:
+
+    sudo -s
+    source /opt/intel/oneapi/vtune/latest/env/vars.sh 
+    vtune -collect hotspots -result-dir ./ -- ./a.out

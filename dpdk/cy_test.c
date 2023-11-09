@@ -1,8 +1,10 @@
 #include "cy_test.h"
 #include <stdio.h>
 
-#define CYCLE 1000000000ULL
-#define DELTA 500000ULL
+#define CYCLE 100000ULL
+#define DELTA_LOWER 500000ULL
+#define DELTA_UPPER 100000000ULL
+#define NUM_PACKETS 100000
 
 int main(int argc, char **argv)
 {
@@ -11,7 +13,7 @@ int main(int argc, char **argv)
     rte_eal_init(argc, argv);
     struct rte_mempool *mbuf_pool = rte_pktmbuf_pool_create(
         "MBUF_POOL",               /* name */
-        256 * 8,                   /* # elements */
+        256 * 16,                  /* # elements */
         0,                         /* cache size */
         0,                         /* application private area size */
         RTE_MBUF_DEFAULT_BUF_SIZE, /* data buffer size */
@@ -40,8 +42,8 @@ int main(int argc, char **argv)
     //     // .tx_free_thresh = 1,
     //     0};
 
-    rte_eth_rx_queue_setup(0, 0, 128, rte_eth_dev_socket_id(0), NULL, mbuf_pool);
-    ret = rte_eth_tx_queue_setup(0, 0, 128 * 8, rte_eth_dev_socket_id(0), NULL);
+    rte_eth_rx_queue_setup(0, 0, 16, rte_eth_dev_socket_id(0), NULL, mbuf_pool);
+    ret = rte_eth_tx_queue_setup(0, 0, 128 * 16, rte_eth_dev_socket_id(0), NULL);
     if (ret != 0)
     {
         printf("%s, rte_eth_tx_queue_setup fail\n", __func__);
@@ -119,6 +121,8 @@ int main(int argc, char **argv)
     pkt->pkt_len = pkt_size;
     pkt->ol_flags = RTE_MBUF_F_TX_IEEE1588_TMST | 1ULL << rte_mbuf_dynflag_lookup(RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL);
 
+    // RTE_MBUF_F_TX_IPV4 | 1ULL << rte_mbuf_dynflag_lookup(RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL);
+
     // Get the offset for the timestamp once
     int offset = rte_mbuf_dynfield_lookup(RTE_MBUF_DYNFIELD_TIMESTAMP_NAME, NULL);
 
@@ -127,40 +131,88 @@ int main(int argc, char **argv)
     int count = 0;
     uint64_t ts;
     rte_eth_read_clock(0, &ts);
-    uint64_t next_cycle = ts + k_cycles;
+    uint64_t next_cycle = ts + k_cycles + 1000000000ULL; // 1 second from now
+    struct timespec delay;
     // Loop for sending packets
-    while (true)
-    {
-        // Wait for the correct time to send the packet
-        while (k_cycles > DELTA && ts < next_cycle - DELTA)
-        {
-            rte_eth_read_clock(0, &ts);
-        };
 
-        // Update the timestamp field in the packet
+    int num_missed_deadlines = 0;
+    int num_failed = 0;
+    long hw_timestamps[NUM_PACKETS];
+    for (int i = 0; i < NUM_PACKETS; i++)
+    {
+        hw_timestamps[i] = -1;
+    }
+    struct timespec ts_send;
+
+    while (count++ < NUM_PACKETS)
+    {
+        next_cycle += k_cycles;
+        rte_eth_read_clock(0, &ts);
+        if (ts < next_cycle - DELTA_UPPER)
+        {
+            delay.tv_sec = 0;
+            delay.tv_nsec = next_cycle - DELTA_UPPER - ts;
+            nanosleep(&delay, NULL);
+        }
+        else if (ts > next_cycle - DELTA_LOWER)
+        {
+            // printf("Missed deadline\n");
+            num_missed_deadlines++;
+            continue;
+        }
+
         *RTE_MBUF_DYNFIELD(pkt, offset, uint64_t *) = next_cycle;
 
         // Send the packet
         uint16_t sent = rte_eth_tx_burst(0, 0, &pkt, 1);
         if (sent)
         {
-            printf("Packet sent %d\n", count++);
-            struct timespec ts_send;
+            // printf("Packet sent %d\n", count);
+
             if (rte_eth_timesync_read_tx_timestamp(0, &ts_send) == 0)
             {
-                printf("Hardware TX timestamp: %ld.%09ld\n", ts_send.tv_sec, ts_send.tv_nsec);
+                // printf("Hardware TX timestamp: %ld.%09ld\n", ts_send.tv_sec, ts_send.tv_nsec);
+                hw_timestamps[count] = ts_send.tv_nsec % k_cycles;
             }
             else
             {
-                printf("Failed to read TX timestamp\n");
+                // printf("Failed to read TX timestamp\n");
+                hw_timestamps[count] = 0;
             }
         }
+        else
+        {
+            num_failed++;
+        }
 
+        // Update the timestamp field in the packet
         // Prepare for the next packet
-        next_cycle += k_cycles;
     }
 
     // ... [cleanup code]
+    // ... Print num failed and average jitter
+    uint64_t accum_jitter = 0;
+    uint64_t jitter = 0;
+    int count_jitter = 0;
+    for (int i = 1; i < NUM_PACKETS; i++)
+    {
+        // printf("Packet %d: %ld\n", i, hw_timestamps[i]);
+        if (hw_timestamps[i] <= 0 || hw_timestamps[i - 1] <= 0)
+        {
+            continue;
+        }
+        jitter = hw_timestamps[i] - hw_timestamps[i - 1];
+        if (jitter < 0)
+        {
+            jitter = -jitter;
+        }
+        accum_jitter += jitter;
+        count_jitter++;
+    }
+    printf("Total number of packets sent: %d\n", NUM_PACKETS);
+    printf("Number of failed packets: %d\n", num_failed);
+    printf("Number of missed deadlines: %d\n", num_missed_deadlines);
+    printf("Average jitter: %lu\n", accum_jitter / count_jitter);
 
     return 0;
 }

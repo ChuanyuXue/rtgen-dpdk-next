@@ -1,0 +1,37 @@
+9 [4130694912] INFO perfrun.launcher <> - Launcher main begin
+11 [4130694912] INFO perfrun.launcher <> - MessageCatalogInit finished
+11 [4130694912] INFO perfrun.launcher <> - Launcher instance created
+11 [4130694912] INFO perfrun.launcher <> - argc = 6; cmdline = /opt/intel/oneapi/vtune/2023.2.0/bin32/amplxe-runss -dump-vdso -r /home/chuanyu/Code/rt-pktgen-dpdk/dpdk --tmp-dir /tmp/amplxe-tmp-root 
+24 [4130694912] INFO perfrun.launcher <> - create msngr2::ICliToolContext
+24 [4130694912] INFO perfrun.launcher <> - create file finder object
+29 [4130073408] INFO perfrun.launcher <> - plugin [remoteplug] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.vdso <> - dumping [vdso] pseudomodule
+29 [4130073408] WARN perfrun.vdso <> - could not locate [vdso] in /proc/self/maps, at file: vcs/perfrun1/plugins/vdso/src/vdso_collector.cpp:94
+29 [4130073408] WARN perfrun.vdso <> - could not write [vdso] to temporary file "/tmp/amplxe-tmp-root/[vdso]", at file: vcs/perfrun1/plugins/vdso/src/vdso_collector.cpp:253
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130073408] INFO perfrun.launcher <> - plugin [] was disabled because it doesn't support the given collection type.
+29 [4130694912] INFO perfrun.launcher <> - Application exit code: 0
+30 [4130694912] INFO perfrun.launcher <> - Exit code: 0
