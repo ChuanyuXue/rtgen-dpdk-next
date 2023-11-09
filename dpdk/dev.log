@@ -1,0 +1,21 @@
+
+Author: <Chuanyu> (skewcy@gmail.com)
+dev.log (c) 2023
+Desc: description
+Created:  2023-11-05T19:56:44.025Z
+
+
+[dpdk-dev] [RFC] mbuf: accurate packet Tx scheduling
+    https://yhbt.net/lore/all/2ee95fc5-fa97-c518-fd61-400d667ace34@intel.com/T/
+
+
+
+Try to use i225-T1 with tc on RPi, which works very well.
+
+
+
+cd /home/ubuntu/tool;sudo mkdir /lib/modules/`uname -r`/kernel/drivers/net/igb/;sudo cp ./igb.ko /lib/modules/`uname -r`/kernel/drivers/net/igb/igb.ko;sudo depmod -a;sudo modprobe i2c_algo_bit;sudo modprobe igb
+
+
+cd /home/ubuntu/tool
+make -C /lib/modules/`uname -r`/build M=$PWD
