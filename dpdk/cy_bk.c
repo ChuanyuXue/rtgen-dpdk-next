@@ -1,6 +1,12 @@
 #include <time.h>
 #include "cy_test.h"
 #include <stdio.h>
+#include <rte_ether.h>
+#include <rte_ip.h>
+#include <rte_udp.h>
+#include <rte_mbuf.h>
+
+#define FREQUENCY = 1000000ULL
 
 int main(int argc, char **argv)
 {
@@ -113,10 +119,10 @@ int main(int argc, char **argv)
         pkt->data_len = pkt_size;
         pkt->pkt_len = pkt_size;
         // pkt->tx_offload = 0;
-        pkt->ol_flags =RTE_MBUF_F_TX_IPV4 | 1ULL << rte_mbuf_dynflag_lookup(
-                            RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL);
-        printf("return value: %d\n",rte_mbuf_dynflag_lookup(
-                             RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL));
+        pkt->ol_flags = RTE_MBUF_F_TX_IPV4 | 1ULL << rte_mbuf_dynflag_lookup(
+                                                 RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL);
+        printf("return value: %d\n", rte_mbuf_dynflag_lookup(
+                                         RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL));
 
         int offset = rte_mbuf_dynfield_lookup(
             RTE_MBUF_DYNFIELD_TIMESTAMP_NAME, NULL);
@@ -150,7 +156,7 @@ int main(int argc, char **argv)
         if (sent)
             printf("Packet sent %d at time %lu\n", count++, ts1 + rand_timestamp);
         ;
-        sleep(1);
+        nanosleep((const struct timespec[]){{0, FREQUENCY}}, NULL);
     }
 
     return 0;

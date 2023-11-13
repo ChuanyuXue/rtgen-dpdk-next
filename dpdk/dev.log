@@ -27,3 +27,17 @@ How to use vtune to check the performance:
     sudo -s
     source /opt/intel/oneapi/vtune/latest/env/vars.sh 
     vtune -collect hotspots -result-dir ./ -- ./a.out
+
+
+
+
+SINGLE CORE:
+
+Total number of packets sent: 100000
+Number of failed packets: 67781
+Number of missed deadlines: 0
+Bandwidth (Mbps): 134.031036
+[1]    23088 floating point exception  sudo ./a.out
+
+
+MULTI CORE:
