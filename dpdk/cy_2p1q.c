@@ -9,7 +9,7 @@
 #include <rte_timer.h>
 #define ETHER_TYPE_IPv4 0x0800
 
-#define CYCLE 1000ULL
+#define CYCLE 100000ULL
 #define DELTA_LATEST 500000ULL
 #define DELTA_EARLIEST 1500000ULL
 #define NUM_PACKETS 100000
