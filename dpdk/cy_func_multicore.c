@@ -8,16 +8,16 @@
 #include <rte_cycles.h>
 #include <rte_timer.h>
 
-#define CYCLE 1000000000ULL
-#define DELTA_LATEST 500000ULL
+#define CYCLE 5000ULL
+#define DELTA_LATEST 500000LL
 #define DELTA_EARLIEST 1500000ULL
-#define NUM_PACKETS 100
+#define NUM_PACKETS 500000
 
-#define MSG "Helloworld"
-#define MSG_LENGTH 11 
+#define MSG_LENGTH 10
 
-
-#define SO_TIMESTAMPING_TX_CY 1
+#define NUM_THREAD 2
+#define SO_TIMESTAMPING_TX_CY 0
+#define SO_LAUNCHTIME_CY 0
 #define TIMESTAMP_BATCH_SIZE 100000000 / CYCLE // 100 ms
 
 #define SRC_ETH_ADDR ((struct rte_ether_addr){{0x00, 0x11, 0x22, 0x33, 0x44, 0x55}})
@@ -26,14 +26,14 @@
 #define DST_IP RTE_IPV4(192, 168, 0, 36)
 #define SRC_PORT 1234
 #define DST_PORT 1234
-struct rte_mempool *create_mbuf_pool(void);
-int configure_port(void);
+struct rte_mempool *create_mbuf_pool(int);
+int configure_port(int);
 int check_offload_capabilities(void);
 int register_timestamping(struct rte_eth_dev_info *dev_info);
 int enable_timesync(void);
 struct rte_mbuf *allocate_packet(void);
 void prepare_packet(struct rte_mbuf *pkt, const char *data, size_t data_size);
-void tx_loop(int *num_missed_deadlines, int *num_failed, long *hw_timestamps);
+int tx_loop(void *args);
 void calculate_jitter(long hw_timestamps[], int num_packets);
 void cleanup_resources(void);
 void rte_sleep(uint64_t ns);
@@ -49,11 +49,11 @@ void rte_sleep(uint64_t ns)
         ;
 }
 
-struct rte_mempool *create_mbuf_pool(void)
+struct rte_mempool *create_mbuf_pool(int num_queues)
 {
     return rte_pktmbuf_pool_create(
         "MBUF_POOL",               /* name */
-        128 * 8,                   /* # elements */
+        128 * 8 * num_queues,      /* # elements */
         0,                         /* cache size */
         0,                         /* application private area size */
         RTE_MBUF_DEFAULT_BUF_SIZE, /* data buffer size */
@@ -61,19 +61,22 @@ struct rte_mempool *create_mbuf_pool(void)
     );
 }
 
-int configure_port(void)
+int configure_port(int num_queues)
 {
     struct rte_eth_conf port_conf = {
         .txmode = {
             .offloads = RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP},
     };
-    int ret = rte_eth_dev_configure(0, 1, 1, &port_conf);
+    int ret = rte_eth_dev_configure(0, 1, num_queues, &port_conf);
     if (ret != 0)
     {
         RTE_LOG(ERR, METER, "%s, rte_eth_dev_configure fail\n", __func__);
     }
     ret |= rte_eth_rx_queue_setup(0, 0, 16, rte_eth_dev_socket_id(0), NULL, mbuf_pool);
-    ret |= rte_eth_tx_queue_setup(0, 0, 128 * 8, rte_eth_dev_socket_id(0), NULL);
+    for (int i = 0; i < num_queues; i++)
+    {
+        ret |= rte_eth_tx_queue_setup(0, i, 128 * 8, rte_eth_dev_socket_id(0), NULL);
+    }
     if (ret != 0)
     {
         RTE_LOG(ERR, METER, "%s, rte_eth_tx_queue_setup fail\n", __func__);
@@ -176,7 +179,15 @@ void setup_data_payload(struct rte_mbuf *pkt, const char *data, size_t data_size
 
 void setup_offload_field(struct rte_mbuf *pkt)
 {
-    pkt->ol_flags = RTE_MBUF_F_TX_IEEE1588_TMST | 1ULL << rte_mbuf_dynflag_lookup(RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL);
+    if (SO_LAUNCHTIME_CY)
+    {
+
+        pkt->ol_flags = RTE_MBUF_F_TX_IEEE1588_TMST | 1ULL << rte_mbuf_dynflag_lookup(RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL);
+    }
+    else
+    {
+        pkt->ol_flags = RTE_MBUF_F_TX_IEEE1588_TMST;
+    }
 }
 
 void prepare_packet(struct rte_mbuf *pkt, const char *data, size_t data_size)
@@ -199,20 +210,37 @@ void prepare_packet(struct rte_mbuf *pkt, const char *data, size_t data_size)
     setup_offload_field(pkt);
 }
 
-void tx_loop(int *num_missed_deadlines, int *num_failed, long *hw_timestamps)
+struct tx_loop_args
 {
+    int queue;
+    uint64_t offset;
+    int num_missed_deadlines;
+    int num_failed;
+    float through_put;
+    uint64_t *hw_timestamps;
+};
+
+int tx_loop(void *rte_args)
+{
+    printf("lcore_id: %d\n", rte_lcore_id());
+    struct tx_loop_args *args = (struct tx_loop_args *)rte_args;
     struct rte_mbuf *pkt = allocate_packet();
     if (pkt == NULL)
     {
-        return;
+        return -1;
     }
-    prepare_packet(pkt, MSG, MSG_LENGTH);
+
+    char msg[MSG_LENGTH];
+    sprintf(msg, "%d    ", rte_lcore_id());
+    prepare_packet(pkt, msg, MSG_LENGTH);
 
     int count = 0;
     uint64_t ts;
-    rte_eth_read_clock(0, &ts);
-    uint64_t next_cycle = ts + 1000000000ULL;
+    uint64_t next_cycle = args->offset; // 1 second from now
     struct timespec hw_timestamp;
+    int sent = 0;
+    uint64_t start_send;
+    uint64_t interal_hz = CYCLE * timer_hz / 1000000000ULL;
 
     while (count < NUM_PACKETS)
     {
@@ -224,36 +252,50 @@ void tx_loop(int *num_missed_deadlines, int *num_failed, long *hw_timestamps)
         }
         else if (ts > next_cycle - DELTA_LATEST)
         {
-            RTE_LOG(INFO, EAL, "Missed deadline\n");
-            num_missed_deadlines++;
+            // RTE_LOG(INFO, EAL, "Missed deadline\n");
+            args->num_missed_deadlines++;
+            count++;
             continue;
         }
 
-        *RTE_MBUF_DYNFIELD(pkt, rte_mbuf_dynfield_lookup(RTE_MBUF_DYNFIELD_TIMESTAMP_NAME, NULL), uint64_t *) = next_cycle;
+        if (SO_LAUNCHTIME_CY)
+        {
 
-        uint16_t sent = rte_eth_tx_burst(0, 0, &pkt, 1);
+            *RTE_MBUF_DYNFIELD(pkt, rte_mbuf_dynfield_lookup(RTE_MBUF_DYNFIELD_TIMESTAMP_NAME, NULL), uint64_t *) = next_cycle;
+        }
+
+        start_send = rte_get_timer_cycles();
+        do
+        {
+            sent = rte_eth_tx_burst(0, args->queue, &pkt, 1);
+        } while (sent == 0 && rte_get_timer_cycles() - start_send < interal_hz);
+
+        // sent = rte_eth_tx_burst(0, args->queue, &pkt, 1);
+
+        // uint16_t sent = rte_eth_tx_burst(0, args->queue, &pkt, 1);
+        // uint16_t sent = rte_eth_tx_burst(0, 0, &pkt, 1);
 
         if (sent > 0 && SO_TIMESTAMPING_TX_CY > 0 && count % TIMESTAMP_BATCH_SIZE == 0)
         {
             if (rte_eth_timesync_read_tx_timestamp(0, &hw_timestamp) == 0)
             {
-                printf("hw_timestamp: %ld.%ld\n", hw_timestamp.tv_sec, hw_timestamp.tv_nsec);
-                hw_timestamps[count] = hw_timestamp.tv_nsec % CYCLE;
+                // printf("hw_timestamp: %ld.%ld\n", hw_timestamp.tv_sec, hw_timestamp.tv_nsec);
+                args->hw_timestamps[count] = hw_timestamp.tv_nsec % CYCLE;
             }
             else
             {
-                printf("hw_timestamp: failed\n");
-                hw_timestamps[count] = 0;
+                // printf("hw_timestamp: failed\n");
+                args->hw_timestamps[count] = 0;
             }
         }
         if (sent == 0)
         {
-            RTE_LOG(INFO, EAL, "Packet sending failed\n");
-            num_failed++;
+            // RTE_LOG(INFO, EAL, "Packet sending failed\n");
+            args->num_failed++;
         }
-
         count++;
     }
+    args->through_put = (float)((NUM_PACKETS - args->num_failed - args->num_missed_deadlines) * 8 * pkt->pkt_len) / (float)(NUM_PACKETS * CYCLE) * 1000ULL;
 }
 
 void calculate_jitter(long hw_timestamps[], int num_packets)
@@ -291,6 +333,7 @@ void cleanup_resources(void)
         RTE_LOG(ERR, METER, "Failed to stop Ethernet device\n");
     }
     rte_mempool_free(mbuf_pool);
+    rte_eal_cleanup();
 }
 
 int main(int argc, char **argv)
@@ -304,14 +347,14 @@ int main(int argc, char **argv)
     }
 
     // Create the memory buffer pool.
-    mbuf_pool = create_mbuf_pool();
+    mbuf_pool = create_mbuf_pool(NUM_THREAD);
     if (mbuf_pool == NULL)
     {
         rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
     }
 
     // Configure the Ethernet port.
-    ret = configure_port();
+    ret = configure_port(NUM_THREAD);
     if (ret != 0)
     {
         rte_exit(EXIT_FAILURE, "Port configuration failed\n");
@@ -347,17 +390,35 @@ int main(int argc, char **argv)
 
     // Initialize timer cycles.
     timer_hz = rte_get_timer_hz();
+    uint64_t hw_timestamps[NUM_PACKETS] = {0};
 
     // Sleep for 5 seconds
-    rte_sleep(5000000000ULL);
+    rte_sleep(3000000000ULL);
+    RTE_LOG(INFO, EAL, "Start sending packets\n");
 
-    int num_missed_deadlines = 0;
-    int num_failed = 0;
-    long hw_timestamps = malloc(NUM_PACKETS * sizeof(long));
-    tx_loop(&num_missed_deadlines, &num_failed, hw_timestamps);
+    uint64_t tx;
+    rte_eth_read_clock(0, &tx);
+    struct tx_loop_args args1 = {0, tx + 2000000000ULL, 0, 0, 0, hw_timestamps};
+    struct tx_loop_args args2 = {1, tx + 2000002500ULL, 0, 0, 0, hw_timestamps};
 
+    printf("lcore_id: %d\n", rte_lcore_id());
+    ret = rte_eal_remote_launch((lcore_function_t *)tx_loop, &args1, 9);
+    if (ret != 0)
+    {
+        rte_exit(EXIT_FAILURE, "Cannot launch tx_loop on lcore 0\n");
+    }
+    ret = rte_eal_remote_launch((lcore_function_t *)tx_loop, &args2, 10);
+    if (ret != 0)
+    {
+        rte_exit(EXIT_FAILURE, "Cannot launch tx_loop on lcore 1\n");
+    }
+
+    rte_eal_mp_wait_lcore();
+    printf("num_missed_deadlines: lcore1: %d lcore2: %d\n", args1.num_missed_deadlines, args2.num_missed_deadlines);
+    printf("num_failed: lcore1: %d lcore2: %d\n", args1.num_failed, args2.num_failed);
+    printf("throughput: lcore1: %f lcore2: %f\n", args1.through_put, args2.through_put);
     // Calculate and log jitter.
-    calculate_jitter(hw_timestamps, NUM_PACKETS);
+    // calculate_jitter(hw_timestamps, NUM_PACKETS);
     // Cleanup resources.
     cleanup_resources();
     return 0;

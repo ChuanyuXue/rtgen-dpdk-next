@@ -9,7 +9,7 @@
 #include <rte_timer.h>
 #define ETHER_TYPE_IPv4 0x0800
 
-#define CYCLE 100000ULL
+#define CYCLE 10000ULL
 #define DELTA_LATEST 500000ULL
 #define DELTA_EARLIEST 1500000ULL
 #define NUM_PACKETS 100000
@@ -167,7 +167,7 @@ int main(int argc, char **argv)
     // pkt->ol_flags =  RTE_MBUF_F_TX_IPV4 | 1ULL << rte_mbuf_dynflag_lookup(RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL);
 
     // Get the offset for the timestamp once
-    int offset = rte_mbuf_dynfield_lookup(RTE_MBUF_DYNFIELD_TIMESTAMP_NAME, NULL);
+    //int offset = rte_mbuf_dynfield_lookup(RTE_MBUF_DYNFIELD_TIMESTAMP_NAME, NULL);
 
     uint64_t k_cycles = CYCLE; // Make sure this is defined correctly
 

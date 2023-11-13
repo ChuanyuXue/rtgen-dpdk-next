@@ -212,6 +212,9 @@ void tx_loop(int *num_missed_deadlines, int *num_failed, float *through_put, lon
     rte_eth_read_clock(0, &ts);
     uint64_t next_cycle = ts + 1000000000ULL;
     struct timespec hw_timestamp;
+    int sent = 0;
+    uint64_t start_send;
+    uint64_t interal_hz = (DELTA_EARLIEST - DELTA_LATEST) * timer_hz / 1000000000ULL;
 
     while (count < NUM_PACKETS)
     {
@@ -225,12 +228,19 @@ void tx_loop(int *num_missed_deadlines, int *num_failed, float *through_put, lon
         {
             // RTE_LOG(INFO, EAL, "Missed deadline\n");
             (*num_missed_deadlines)++;
+            count++;
             continue;
         }
 
         *RTE_MBUF_DYNFIELD(pkt, rte_mbuf_dynfield_lookup(RTE_MBUF_DYNFIELD_TIMESTAMP_NAME, NULL), uint64_t *) = next_cycle;
 
-        uint16_t sent = rte_eth_tx_burst(0, 0, &pkt, 1);
+        start_send = rte_get_timer_cycles();
+        do
+        {
+            sent = rte_eth_tx_burst(0, 0, &pkt, 1);
+        } while (sent == 0 && rte_get_timer_cycles() - start_send < interal_hz);
+
+        // sent = rte_eth_tx_burst(0, 0, &pkt, 1);
 
         if (sent > 0 && SO_TIMESTAMPING_TX_CY > 0 && count % TIMESTAMP_BATCH_SIZE == 0)
         {

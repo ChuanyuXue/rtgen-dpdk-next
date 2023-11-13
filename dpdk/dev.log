@@ -41,3 +41,30 @@ Bandwidth (Mbps): 134.031036
 
 
 MULTI CORE:
+
+
+
+
+
+
+
+SINGLE:
+
+EAL: Start sending packets
+lcore_id: 0
+lcore_id: 9
+num_missed_deadlines: lcore1: 9743 lcore2: 0
+num_failed: lcore1: 0 lcore2: 0
+throughput: lcore1: 41.194691 lcore2: 0.000000
+
+
+MULTI:
+ocket -1)
+TELEMETRY: No legacy callbacks, legacy socket not created
+EAL: Start sending packets
+lcore_id: 0
+lcore_id: 9
+lcore_id: 10
+num_missed_deadlines: lcore1: 20061 lcore2: 19623
+num_failed: lcore1: 0 lcore2: 0
+throughput: lcore1: 19.965462 lcore2: 19.983683

@@ -2,6 +2,7 @@
     "C_Cpp.default.compilerPath": "/usr/bin/clang",
     "files.associations": {
         "cy_test.h": "c",
-        "time.h": "c"
+        "time.h": "c",
+        "rte_mempool.h": "c"
     }
 }
