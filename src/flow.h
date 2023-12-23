@@ -63,13 +63,6 @@ struct flow
 extern struct flow flows[MAX_NUM_FLOWS];
 extern int num_flows;
 
-struct interface_config *create_interface(
-    int vlan,
-    char *interface_name,
-    char *address_src,
-    char *address_dst,
-    int port_src,
-    int port_dst);
 
 void destroy_interface(struct interface_config *interface);
 
@@ -89,6 +82,14 @@ void sleep_until_wakeup(struct flow *flow);
 
 /* address_src is not used now
 port_src and port_dst are the same */
+
+struct interface_config *create_interface(
+    int vlan,
+    char *interface_name,
+    char *address_src,
+    char *address_dst,
+    int port_src,
+    int port_dst);
 
 struct interface_config
 {

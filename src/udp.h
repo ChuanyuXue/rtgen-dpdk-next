@@ -1,16 +1,28 @@
-#ifndef _UDP_H_
-#define _UDP_H_
-#include "flow.h"
+#include <stdio.h>
+#include <rte_common.h>
+#include <rte_memory.h>
+#include <rte_mempool.h>
+#include <rte_mbuf.h>
+#include <rte_eal.h>
+#include <rte_ethdev.h>
+#include <rte_cycles.h>
+#include <rte_timer.h>
 
-int setup_receiver(const int port, const char *dev_name);
-int setup_sender(const char *dev_name);
-int setup_non_blocking(int fd);
-int setup_rx_timestamping(int fd);
-int setup_tx_timestamping(int fd);
-int setup_sotime(int fd, const char *dev_name, const int priority);
-int enable_nic_hwtimestamping(int fd, const char *dev_name);
-int send_single(int fd, const char *address, const int port, char buffer[], const int buffer_size);
-int sche_single(int fd, const char *address, const int port, uint64_t txtime,
-                char buffer[], const int buffer_size);
-int recv_single(int fd, char *address, char buffer[]);
-#endif
+/* [TODO]: Design a header format to store udp_header, ip_header, and ethernet header together
+    This speed up the process because we don't change the header during runtime
+*/
+struct rtgen_hdr
+{
+    struct rte_ether_hdr *eth_hdr;
+    struct rte_vlan_hdr *vlan_hdr;
+    struct rte_ipv4_hdr *ip_hdr;
+    struct rte_udp_hdr *udp_hdr;
+};
+
+/* Interface to be implemented
+    - port_id & queue_id
+    - header structure pointer -> udp_header, ip_header, ethernet_header, vlan_header
+    - payload structure -> a pointer to the payload
+*/
+int send_single(int port_id, struct rtgen_hdr* pheader, char *msg, uint16_t msg_len);
+int sche_single(int port_id, struct rtgen_hdr* pheader, char *msg, uint16_t msg_len, uint64_t time);
