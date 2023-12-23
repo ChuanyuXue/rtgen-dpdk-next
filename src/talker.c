@@ -168,9 +168,9 @@ int main(int argc, char *argv[])
 		apply_config_file(state, pit_config_path);
 	}
 
-	/* 
+	/*
 		[TODO]: Replace with new interface.
-			- Only one interface is needed (it can directly write VLAN tag)	
+			- Only one interface is needed (it can directly write VLAN tag)
 			- Just init one interface
 	*/
 	for (int i = 0; i < state->num_flows; i++)
