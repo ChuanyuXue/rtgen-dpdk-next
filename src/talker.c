@@ -1,32 +1,31 @@
 #include "talker.h"
 
-static char *address = "127.0.0.1";
-static char *interface = "eth0";
-static int port = 1998;
-
 void usage(char *progname)
 {
 	fprintf(stderr,
 			"\n"
 			"usage: %s [options]\n"
 			"\n"
-			" -d  [str]      destination ip address\n"
-			" -p  [int]      remote port number\n"
-			" -i  [str]      network interface\n"
-			" -o  [int]      delta from wake up to txtime in nanoseconds "
+			" -i, --port       [int]      port ID\n"
+			" -q, --queue      [int]      queue ID\n"
+			" --mac-dst	       [str]      destination mac address\n"
+			" --vlan           [int] .    vlan ID\n"
+			" -k, --priority   [int]      traffic SO_PRIORITY (default %d)\n"
+			" -d, --ip-dst     [str]      destination ip address\n"
+			" -p, --port-dst   [int]      remote port number\n"
+			" -o, --delta      [int]      delta from wake up to txtime in nanoseconds "
 			"(default %d)\n"
-			" -t  [int]      traffic period in nanoseconds (default %d)\n"
-			" -b  [str]      traffic beginning offset in seconds (default "
+			" -t, --period     [int]      traffic period in nanoseconds (default %d)\n"
+			" -b, --offset     [str]      traffic beginning offset in seconds (default "
 			"current TAI)\n"
-			" -l  [int]      traffic paylaod size in bytes (default %d)\n"
-			" -k  [int]      traffic SO_PRIORITY (default %d)\n"
-			" -m  [str]      enable multi-flow mode from file (this will "
+			" -l, --size       [int]      traffic paylaod size in bytes (default %d)\n"
+			" -m, --multi-flow [str]      enable multi-flow mode from file (this will "
 			"                overwrite all above configs)\n "
-			" -a             disable debug mode\n"
-			" -v             disable loopback\n"
-			" -s             disable ETF scheduler\n"
-			" -w             disable Hardware Timestamping\n"
-			" -h             prints this message and exits\n"
+			" -a, --no-log                disable verbose\n"
+			" -v, --no-loop               disable loopback\n"
+			" -s, --no-rt                 disable ETF scheduler\n"
+			" -w, --no-stamp              disable Hardware Timestamping\n"
+			" -h, --help                  prints this message and exits\n"
 			"\n",
 			progname, DEFAULT_TIME_DELTA, DEFAULT_PERIOD, DEFAULT_PAYLOAD,
 			DEFAULT_PRIORITY);
@@ -35,10 +34,16 @@ void usage(char *progname)
 int parser(int argc, char *argv[])
 {
 	int c;
+	int option_index = 0;
 	char *progname = strrchr(argv[0], '/');
 	progname = progname ? 1 + progname : argv[0];
-	while (EOF != (c = getopt(argc, argv, "d:p:i:o:t:b:l:k:m:n:avswh")))
+
+	while (true)
 	{
+		if (c == -1)
+			break; // No more options
+
+		c = getopt_long(argc, argv, "i:q:k:d:p:o:t:b:l:m:avswh", long_options, &option_index);
 		switch (c)
 		{
 		case 'd':
@@ -48,7 +53,7 @@ int parser(int argc, char *argv[])
 			port = atoi(optarg);
 			break;
 		case 'i':
-			interface = optarg;
+			pit_port = optarg;
 			break;
 		case 'o':
 			pit_delta = atoi(optarg);

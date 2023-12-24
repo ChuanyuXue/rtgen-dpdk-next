@@ -6,7 +6,17 @@
 #define MAX_NUM_FLOWS 128
 #define MAX_LINE_LENGTH 256
 #define START_DELAY_FROM_NOW_IN_SEC 3
+
 #define DEFAULT_MULTI_FLOW 0
+#define DEFAULT_PORT 0
+#define DEFAULT_QUEUE 0
+#define DEFAULT_MAC_SRC "00:00:00:00:00:00"
+#define DEFAULT_MAC_DST "00:00:00:00:00:00"
+#define DEFAULT_VLAN 0
+#define DEFAULT_IP_SRC ""
+#define DEFAULT_IP_DST ""
+#define DEFAULT_PORT_SRC 12345
+#define DEFAULT_PORT_DST 12345
 #define DEFAULT_PRIORITY 3
 #define DEFAULT_PERIOD 1000000000
 #define DEFAULT_OFFSET 0
@@ -16,26 +26,32 @@
 #define DEFAULT_RUNTIME 9999999999
 
 #define DEFAULT_HW_FLAG 1
+#define DEFAULT_VERBOSE_FLAG 1
 #define DEFAULT_ETF_FLAG 1
 #define DEFAULT_LOOPBACK_FLAG 1
-#define DEFAULT_DEBUG_FLAG SOF_TXTIME_REPORT_ERRORS
 #define DEFAULT_RELAY_FLAG 1
-#define DEADLINE_MODE 0
 
 #define DEFAULT_CONFIG_PATH "../config/flow_config.txt"
 
 /* variables with prefix "pit_" are used for the single flow mode */
-
-extern int pit_multi_flow;
+extern int pit_port;
+extern int pit_queue;
+extern int pit_mac_src;
+extern int pit_mac_dst;
+extern int pit_vlan;
+extern int pit_priority;
+extern int pit_ip_src;
+extern int pit_ip_dst;
+extern int pit_port_src;
+extern int pit_port_dst;
 extern int pit_delta;
 extern int pit_period;
-extern int pit_offset;
-extern int pit_ns_offset;
+extern long pit_offset;
+extern long pit_ns_offset;
 extern int pit_payload_size;
-extern int pit_priority;
 extern int pit_etf;
 extern int pit_hw;
-extern int pit_debug;
+extern int pit_verbose;
 extern int pit_loopback;
 extern int pit_relay;
 extern long pit_runtime;
