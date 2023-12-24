@@ -15,7 +15,16 @@ int pit_relay = DEFAULT_RELAY_FLAG;
 long pit_runtime = DEFAULT_RUNTIME;
 char *pit_config_path = DEFAULT_CONFIG_PATH;
 
-struct interface_config *create_interface(int vlan, char *interface_name, char *address_src, char *address_dst, int port_src, int port_dst)
+struct interface_config *create_interface(int port,
+                                          int queue,
+                                          char *mac_src,
+                                          char *mac_dst,
+                                          int vlan,
+                                          int priority,
+                                          char *ip_src,
+                                          char *ip_dst,
+                                          int port_src,
+                                          int port_dst)
 {
     struct interface_config *interface = malloc(sizeof(struct interface_config));
     if (interface == NULL)
@@ -23,10 +32,14 @@ struct interface_config *create_interface(int vlan, char *interface_name, char *
         die("malloc failed for creating interface");
         return NULL;
     }
+    interface->port = port;
+    interface->queue = queue;
+    interface->mac_src = strdup(mac_src);
+    interface->mac_dst = strdup(mac_dst);
     interface->vlan = vlan;
-    interface->interface_name = strdup(interface_name);
-    interface->address_src = strdup(address_src);
-    interface->address_dst = strdup(address_dst);
+    interface->priority = priority;
+    interface->ip_src = strdup(ip_src);
+    interface->ip_dst = strdup(ip_dst);
     interface->port_src = port_src;
     interface->port_dst = port_dst;
     return interface;
@@ -104,7 +117,7 @@ void init_flow_timer(struct flow *flow, struct timespec *now)
 
     flow->wake_up_time->tv_sec = flow->sche_time->tv_sec;
     flow->wake_up_time->tv_nsec = flow->sche_time->tv_nsec - 1 * flow->delta;
-    
+
     while (flow->wake_up_time->tv_nsec < 0)
     {
         flow->wake_up_time->tv_sec--;
@@ -170,4 +183,3 @@ void add_flow(struct flow_state *flow_state, struct flow *flow)
     flow_state->flows[flow_state->num_flows] = flow;
     flow_state->num_flows++;
 }
-

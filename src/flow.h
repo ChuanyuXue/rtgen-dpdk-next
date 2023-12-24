@@ -15,7 +15,6 @@
 #define DEFAULT_TIME_DELTA 1000000
 #define DEFAULT_RUNTIME 9999999999
 
-
 #define DEFAULT_HW_FLAG 1
 #define DEFAULT_ETF_FLAG 1
 #define DEFAULT_LOOPBACK_FLAG 1
@@ -52,17 +51,15 @@ struct flow
     long offset_sec;
     long offset_nsec;
     long count;
-    
-    /* Wake up time is `delta` ahead of the scheduled time.  */
 
-    struct timespec *wake_up_time;  
+    /* Wake up time is `delta` ahead of the scheduled time.  */
+    struct timespec *wake_up_time;
     struct timespec *sche_time;
     struct interface_config *net;
 };
 
 extern struct flow flows[MAX_NUM_FLOWS];
 extern int num_flows;
-
 
 void destroy_interface(struct interface_config *interface);
 
@@ -84,20 +81,27 @@ void sleep_until_wakeup(struct flow *flow);
 port_src and port_dst are the same */
 
 struct interface_config *create_interface(
+    int port,
+    int queue,
+    char *mac_src,
+    char *mac_dst,
     int vlan,
-    char *interface_name,
-    char *address_src,
-    char *address_dst,
+    int priority,
+    char *ip_src,
+    char *ip_dst,
     int port_src,
     int port_dst);
 
 struct interface_config
 {
-    int fd;
+    int port;
+    int queue;
+    char *mac_src;
+    char *mac_dst;
     int vlan;
-    char *interface_name;
-    char *address_src;
-    char *address_dst;
+    int priority;
+    char *ip_src;
+    char *ip_dst;
     int port_src;
     int port_dst;
 };
