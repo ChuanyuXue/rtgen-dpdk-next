@@ -3,6 +3,7 @@
 
 #include <arpa/inet.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <getopt.h>
 #include <linux/errqueue.h>
 #include <linux/net_tstamp.h>
@@ -19,7 +20,6 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 // #ifndef SO_TXTIME
 // #define SO_TXTIME 61
