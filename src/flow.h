@@ -1,12 +1,14 @@
 #ifndef _FLOW_H_
 #define _FLOW_H_
 
-#include "system.h"
-#include "udp.h"
+#include "engine_dpdk.h"
 
 #define MAX_NUM_FLOWS 128
 #define MAX_LINE_LENGTH 256
 #define START_DELAY_FROM_NOW_IN_SEC 3
+
+#define ONE_SECOND_IN_NS 1000000000ULL
+#define FUDGE_FACTOR 1000000ULL
 
 #define DEFAULT_MULTI_FLOW 0
 #define DEFAULT_PORT 0
@@ -82,8 +84,8 @@ struct flow {
     uint64_t count;
 
     /* Wake up time is `delta` ahead of the scheduled time.  */
-    struct timespec *wake_up_time;
-    struct timespec *sche_time;
+    uint64_t sche_time;
+
     struct interface_config *net;
 };
 
@@ -134,6 +136,9 @@ struct interface_config {
     char *ip_dst;
     int port_src;
     int port_dst;
+
+    int rt_enabled;
+    int txtime_enabled;
 };
 
 /* TODO: Add statistic information to flow struct */

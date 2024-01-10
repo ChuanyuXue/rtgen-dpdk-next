@@ -1,8 +1,12 @@
 #ifndef _TALKER_H_
 #define _TALKER_H_
-#include "udp.h"
-#include "sche.h"
 #include <getopt.h>
+#include <stdio.h>
+
+#include "engine_dpdk.h"
+#include "flow.h"
+#include "sche.h"
+#include "talker.h"
 
 static struct option long_options[] = {
     {"port", optional_argument, 0, 'i'},
@@ -28,7 +32,7 @@ static struct option long_options[] = {
 
 void usage(char *progname);
 int parser(int argc, char *argv[]);
-void apply_command_arguments(struct flow_state *state);
-void apply_config_file(struct flow_state *state, const char *config_path);
+void parse_command_arguments(struct flow_state *state);
+void parse_config_file(struct flow_state *state, const char *config_path);
 
 #endif

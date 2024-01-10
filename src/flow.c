@@ -39,7 +39,7 @@ struct interface_config *create_interface(int port,
     struct interface_config *interface = (struct interface_config *)malloc(sizeof(struct interface_config));
 
     if (interface == NULL) {
-        die("malloc failed for creating interface");
+        printf("malloc failed for creating interface");
         return NULL;
     }
 
@@ -74,7 +74,7 @@ struct flow *create_flow(
     struct flow *flow = (struct flow *)malloc(sizeof(struct flow));
 
     if (flow == NULL) {
-        die("malloc failed for creating flow");
+        printf("malloc failed for creating flow");
         return NULL;
     }
     flow->size = size;
@@ -84,64 +84,35 @@ struct flow *create_flow(
     flow->offset_sec = offset_sec;
     flow->offset_nsec = offset_nsec;
     flow->net = net;
-    flow->wake_up_time = (struct timespec *)malloc(sizeof(struct timespec));
 
-    if (flow->wake_up_time == NULL) {
-        die("malloc failed for creating flow timer 0");
-        free(flow);
-        return NULL;
-    }
-    flow->sche_time = (struct timespec *)malloc(sizeof(struct timespec));
-    if (flow->sche_time == NULL) {
-        die("malloc failed for creating flow timer 1");
-        free(flow);
-        return NULL;
-    }
     flow->count = 0;
     return flow;
 }
 
 void destroy_flow(struct flow *flow) {
     destroy_interface(flow->net);
-    free(flow->wake_up_time);
-    free(flow->sche_time);
     free(flow);
 }
 
-void init_flow_timer(struct flow *flow, struct timespec *now) {
-    if (flow->sche_time == NULL || flow->wake_up_time == NULL) {
-        die("flow timer is NULL before init");
-        return;
-    }
-
+void init_flow_timer(struct flow *flow, uint64_t *current_t) {
     if (pit_offset) {
-        flow->sche_time->tv_sec = flow->offset_sec + pit_offset;
-        flow->sche_time->tv_nsec = flow->offset_nsec + pit_ns_offset;
+        flow->sche_time = (pit_offset + flow->offset_sec) * ONE_SECOND_IN_NS + flow->offset_nsec;
     } else {
-        flow->sche_time->tv_sec = now->tv_sec + START_DELAY_FROM_NOW_IN_SEC + flow->offset_sec;
-        flow->sche_time->tv_nsec = flow->offset_nsec;
-    }
-
-    flow->wake_up_time->tv_sec = flow->sche_time->tv_sec;
-    flow->wake_up_time->tv_nsec = flow->sche_time->tv_nsec - 1 * flow->delta;
-
-    while (flow->wake_up_time->tv_nsec < 0) {
-        flow->wake_up_time->tv_sec--;
-        flow->wake_up_time->tv_nsec += ONESEC;
+        flow->sche_time = now->tv_sec * ONE_SECOND_IN_NS + now->tv_nsec;
     }
 }
 
 void inc_flow_timer(struct flow *flow) {
     flow->sche_time->tv_nsec += flow->period;
-    while (flow->sche_time->tv_nsec > ONESEC) {
+    while (flow->sche_time->tv_nsec > ONE_SECOND_IN_NS) {
         flow->sche_time->tv_sec++;
-        flow->sche_time->tv_nsec -= ONESEC;
+        flow->sche_time->tv_nsec -= ONE_SECOND_IN_NS;
     }
 
     flow->wake_up_time->tv_nsec += flow->period;
-    while (flow->wake_up_time->tv_nsec > ONESEC) {
+    while (flow->wake_up_time->tv_nsec > ONE_SECOND_IN_NS) {
         flow->wake_up_time->tv_sec++;
-        flow->wake_up_time->tv_nsec -= ONESEC;
+        flow->wake_up_time->tv_nsec -= ONE_SECOND_IN_NS;
     }
     flow->count++;
 }
@@ -151,10 +122,10 @@ void sleep_until_wakeup(struct flow *flow) {
 }
 
 struct flow_state *create_flow_state() {
-    struct flow_state *flow_state = (struct flow_state *)(sizeof(struct flow_state));
+    struct flow_state *flow_state = (struct flow_state *)malloc(sizeof(struct flow_state));
 
     if (flow_state == NULL) {
-        die("malloc failed for creating flow state");
+        printf("malloc failed for creating flow state");
         return NULL;
     }
     for (int i = 0; i < MAX_NUM_FLOWS; i++) {
@@ -173,7 +144,7 @@ void destroy_flow_state(struct flow_state *flow_state) {
 
 void add_flow(struct flow_state *flow_state, struct flow *flow) {
     if (flow_state->num_flows >= MAX_NUM_FLOWS) {
-        die("too many flows");
+        printf("too many flows");
         return;
     }
     flow_state->flows[flow_state->num_flows] = flow;
