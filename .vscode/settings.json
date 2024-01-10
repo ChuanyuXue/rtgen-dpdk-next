@@ -3,6 +3,10 @@
     "files.associations": {
         "cy_test.h": "c",
         "time.h": "c",
-        "rte_mempool.h": "c"
+        "rte_mempool.h": "c",
+        "engine_dpdk.h": "c",
+        "header_dpdk.h": "c",
+        "rte_common.h": "c",
+        "rte_mbuf_core.h": "c"
     }
 }

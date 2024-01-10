@@ -1,0 +1,4 @@
+*.out
+*.o
+*.ko
+src/build/*
