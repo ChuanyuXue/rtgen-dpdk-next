@@ -1,3 +1,11 @@
+/*
+Author: <Chuanyu> (skewcy@gmail.com)
+cy_func.c (c) 2024
+Desc: description
+Created:  2024-01-02T19:20:45.839Z
+*/
+
+
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_eal.h>
@@ -30,6 +38,7 @@
 #define DST_IP RTE_IPV4(192, 168, 0, 139)
 #define SRC_PORT 1234
 #define DST_PORT 1234
+
 struct rte_mempool *create_mbuf_pool(void);
 int configure_port(void);
 int check_offload_capabilities(void);
@@ -167,8 +176,6 @@ void setup_data_payload(struct rte_mbuf *pkt, const char *data, size_t data_size
 
 void setup_offload_field(struct rte_mbuf *pkt) {
     pkt->ol_flags = RTE_MBUF_F_TX_IEEE1588_TMST | 1ULL << rte_mbuf_dynflag_lookup(RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL);
-
-    // pkt->ol_flags = RTE_MBUF_F_TX_IEEE1588_TMST;
 }
 
 void prepare_packet(struct rte_mbuf *pkt, const char *data, size_t data_size) {
@@ -211,6 +218,7 @@ void tx_loop(int *num_missed_deadlines, int *num_failed, float *through_put, lon
     while (count < NUM_PACKETS) {
         next_cycle += CYCLE;
         rte_eth_read_clock(0, &ts);
+
         if (ts < next_cycle - DELTA_EARLIEST) {
             rte_sleep(next_cycle - DELTA_EARLIEST - ts);
         } else if (ts > next_cycle - DELTA_LATEST) {
