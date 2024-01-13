@@ -1,29 +1,42 @@
-# Define the compiler 
+# Define the compiler
 CC = gcc
+DPDK_LIBS = $(shell pkg-config --libs libdpdk)
+DPDK_CFLAGS = $(shell pkg-config --cflags libdpdk)
+DEBUG = -g
+BUILDDIR = build
+
+# Create the build directory if it doesn't exist
+$(shell mkdir -p $(BUILDDIR))
 
 # Define the executables
-talker: talker.o flow.o system.o udp.o sche.o
-	$(CC) -o $@ $^
+talker: $(BUILDDIR)/talker.o $(BUILDDIR)/flow.o  $(BUILDDIR)/engine.o $(BUILDDIR)/sche.o $(BUILDDIR)/utility.o $(BUILDDIR)/header.o
+	$(CC) -o $(BUILDDIR)/$@ $^ $(DPDK_LIBS) $(DEBUG)
 
-listener: listener.o flow.o system.o udp.o
-	$(CC) -o $@ $^
+listener: $(BUILDDIR)/listener.o $(BUILDDIR)/flow.o  $(BUILDDIR)/engine.o $(BUILDDIR)/utility.o $(BUILDDIR)/header.o
+	$(CC)  -o $(BUILDDIR)/$@ $^ $(DPDK_LIBS) $(DEBUG)
 
 # Define the object files
-sche.o: sche.c sche.h system.h flow.h
+$(BUILDDIR)/sche.o: sche.c sche.h flow.h
 	$(CC) -c -o $@ $<
 
-flow.o: flow.c flow.h system.h
+$(BUILDDIR)/flow.o: flow.c flow.h 
 	$(CC) -c -o $@ $<
 
-system.o: system.c system.h
+$(BUILDDIR)/talker.o: talker.c talker.h  flow.h
 	$(CC) -c -o $@ $<
 
-talker.o: talker.c talker.h system.h flow.h
+$(BUILDDIR)/engine.o: engine_dpdk.c engine_dpdk.h  flow.h
+	$(CC) -c -o $@ $< $(DPDK_CFLAGS)
+
+$(BUILDDIR)/header.o: header_dpdk.c header_dpdk.h
+	$(CC) -c -o $@ $< $(DPDK_CFLAGS) 
+
+$(BUILDDIR)/listener.o: listener.c  flow.h
 	$(CC) -c -o $@ $<
 
-udp.o: udp.c udp.h system.h flow.h
+$(BUILDDIR)/utility.o: utility.c utility.h
 	$(CC) -c -o $@ $<
 
 # Define the clean target
 clean:
-	rm -f talker listener *.o
+	rm -rf $(BUILDDIR)/*.o $(BUILDDIR)/talker $(BUILDDIR)/listener
