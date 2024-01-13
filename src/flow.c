@@ -94,31 +94,12 @@ void destroy_flow(struct flow *flow) {
     free(flow);
 }
 
-void init_flow_timer(struct flow *flow, uint64_t *current_t) {
-    if (pit_offset) {
-        flow->sche_time = (pit_offset + flow->offset_sec) * ONE_SECOND_IN_NS + flow->offset_nsec;
-    } else {
-        flow->sche_time = now->tv_sec * ONE_SECOND_IN_NS + now->tv_nsec;
-    }
+void init_flow_timer(struct flow *flow, uint64_t basetime) {
+    flow->sche_time = basetime + flow->offset_sec * ONE_SECOND_IN_NS + flow->offset_nsec;
 }
 
 void inc_flow_timer(struct flow *flow) {
-    flow->sche_time->tv_nsec += flow->period;
-    while (flow->sche_time->tv_nsec > ONE_SECOND_IN_NS) {
-        flow->sche_time->tv_sec++;
-        flow->sche_time->tv_nsec -= ONE_SECOND_IN_NS;
-    }
-
-    flow->wake_up_time->tv_nsec += flow->period;
-    while (flow->wake_up_time->tv_nsec > ONE_SECOND_IN_NS) {
-        flow->wake_up_time->tv_sec++;
-        flow->wake_up_time->tv_nsec -= ONE_SECOND_IN_NS;
-    }
-    flow->count++;
-}
-
-void sleep_until_wakeup(struct flow *flow) {
-    clock_nanosleep(CLOCK_TAI, TIMER_ABSTIME, flow->wake_up_time, NULL);
+    flow->sche_time += flow->period;
 }
 
 struct flow_state *create_flow_state() {

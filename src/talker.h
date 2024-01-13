@@ -8,6 +8,7 @@
 #include "sche.h"
 #include "talker.h"
 
+
 static struct option long_options[] = {
     {"port", optional_argument, 0, 'i'},
     {"queue", optional_argument, 0, 'q'},

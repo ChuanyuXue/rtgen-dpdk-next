@@ -15,20 +15,21 @@
 #include "header_dpdk.h"
 #include "utility.h"
 
-#define MAX_AVAILABLE_PORTS 8
+#define MAX_AVAILABLE_PORTS 4
 #define NUM_MBUF_ELEMENTS 128
-#define NUM_TX_QUEUE 4
-#define NUM_RX_QUEUE 4
+#define NUM_TX_QUEUE 1
+#define NUM_RX_QUEUE 1
 #define NUM_TX_DESC 32
 #define NUM_RX_DESC 32
 
-int setup_EAL();
-void setup_port(int port_id);
+int setup_EAL(char *progname);
 struct rte_mempool *create_mbuf_pool(void);
 
 void dpdk_log(uint32_t level, uint32_t type, const char *fmt, ...);
 
-void configure_port(int port_id, struct rte_mempool *mbuf_pool);
+void configure_port(int port_id);
+
+void start_port(int port_id);
 
 void configure_tx_queue(int port_id, int queue_id);
 
@@ -51,7 +52,8 @@ void prepare_packet_offload(struct rte_mbuf *pkt, int txtime_enabled, int timest
 
 int sche_single(struct rte_mbuf *pkt, struct interface_config *, uint64_t txtime, char msg[], const int msg_size);
 
-void rte_sleep(uint64_t ns, uint64_t timer_hz);
+extern uint64_t pit_timer_hz;
+void rte_sleep(uint64_t ns);
 
 char *get_mac_addr(int port_id);
 

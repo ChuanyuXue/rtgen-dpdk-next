@@ -83,7 +83,7 @@ struct flow {
     uint64_t offset_nsec;
     uint64_t count;
 
-    /* Wake up time is `delta` ahead of the scheduled time.  */
+    /* Schedule time, updated after each iteration*/
     uint64_t sche_time;
 
     struct interface_config *net;
@@ -104,9 +104,8 @@ struct flow *create_flow(
     struct interface_config *net);
 
 void destroy_flow(struct flow *flow);
-void init_flow_timer(struct flow *flow, struct timespec *now);
+void init_flow_timer(struct flow *flow, uint64_t base);
 void inc_flow_timer(struct flow *flow);
-void sleep_until_wakeup(struct flow *flow);
 
 /* address_src is not used now
 port_src and port_dst are the same */

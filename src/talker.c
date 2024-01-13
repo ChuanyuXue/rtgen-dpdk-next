@@ -221,9 +221,12 @@ int main(int argc, char *argv[]) {
     }
 
     /*   Set up EAL*/
-    if (setup_EAL() < 0) {
+    if (setup_EAL(argv[0]) < 0) {
         printf("[!] failed to initialize EAL");
     }
+
+    pit_timer_hz = rte_get_timer_hz();
+    rte_sleep(ONE_SECOND_IN_NS * 1);
 
     /*   Initialize the flows from the config file or command line arguments */
     struct flow_state *state = create_flow_state();
@@ -239,22 +242,35 @@ int main(int argc, char *argv[]) {
     /*   Configure the port and queue for each flow */
     struct rte_mempool *mbuf_pool = create_mbuf_pool();
     int port_id, queue_id;
+    struct dev_state *dev_state;
+    struct queue_state *queue_state;
+
+    /* Config rx queue*/
+    /* Idk why it triggers segmentation fault without this*/
+
     for (int i = 0; i < state->num_flows; i++) {
         /* Configure port */
         port_id = state->flows[i]->net->port;
-        if (dev_state_list[port_id].is_configured != 1) {
-            configure_port(port_id, mbuf_pool);
-            dev_state_list[port_id].is_existed = 1;
-            dev_state_list[port_id].is_configured = 1;
+        dev_state = &dev_state_list[port_id];
+        queue_state = &dev_state->txq_state[state->flows[i]->net->queue];
+
+        if (dev_state->is_existed == 1 && dev_state->is_configured != 1) {
+            configure_port(port_id);
+            dev_state->is_configured = 1;
+            configure_rx_queue(0, 0, mbuf_pool);
         }
 
-        /* Configure queue */
+        /* Configure tx queue */
         queue_id = state->flows[i]->net->queue;
-        if (dev_state_list[port_id].txq_state[queue_id].is_configured != 1) {
+        if (queue_state->is_existed == 1 && queue_state->is_configured != 1) {
             configure_tx_queue(port_id, queue_id);
+            queue_state->is_configured = 1;
+        }
 
-            dev_state_list[port_id].txq_state[queue_id].is_existed = 1;
-            dev_state_list[port_id].txq_state[queue_id].is_configured = 1;
+        /* Start port */
+        if (dev_state->is_running != 1 && dev_state->is_configured == 1) {
+            start_port(port_id);
+            dev_state_list[port_id].is_running = 1;
         }
     }
 
@@ -300,14 +316,15 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    uint64_t start_time;
+    uint64_t base_time;
     uint64_t current_time;
+
     /*[TODO]: Consider multiple ports*/
     rte_eth_read_clock(pit_port, &current_time);
     if (pit_offset) {
-        start_time = pit_offset;
+        base_time = pit_offset * ONE_SECOND_IN_NS + pit_ns_offset;
     } else {
-        start_time = current_time;
+        base_time = (current_time / ONE_SECOND_IN_NS + 5) * ONE_SECOND_IN_NS;
     }
 
     int it_frame;
@@ -315,25 +332,33 @@ int main(int argc, char *argv[]) {
     int num_missed_deadlines = 0;
     int count = 0;
 
-    uint64_t timer_hz = rte_get_timer_hz();
+    uint64_t txtime = 0;
+
+    for (int i = 0; i < state->num_flows; i++) {
+        init_flow_timer(state->flows[i], base_time);
+    }
 
     struct flow *flow;
-    while ((current_time - start_time) / ONE_SECOND_IN_NS < pit_runtime) {
+    printf("Base time: %lu\n", base_time);
+    printf("Current time: %lu\n", current_time);
+    while (current_time < base_time || (current_time - base_time) / ONE_SECOND_IN_NS < pit_runtime) {
         for (it_frame = 0; it_frame < schedule->num_frames_per_cycle; it_frame++) {
+            rte_eth_read_clock(pit_port, &current_time);
+
             flow_id = schedule->order[it_frame];
             flow = state->flows[flow_id];
             port_id = flow->net->port;
-            uint64_t txtime = start_time + flow->wake_up_time->tv_sec * ONE_SECOND_IN_NS + flow->wake_up_time->tv_nsec;
-            printf("TV SEC: %ld\n", flow->wake_up_time->tv_sec);
-            printf("TV NSEC: %ld\n", flow->wake_up_time->tv_nsec);
+
+            inc_flow_timer(flow);
+            txtime = flow->sche_time;
 
             printf("Flow id: %d\n", flow_id);
             printf("Port id: %d\n", port_id);
-            printf("Current time: %ld\n", current_time);
-            printf("Txtime: %ld\n", txtime);
+            printf("Current time: %lu\n", current_time);
+            printf("Txtime: %lu\n", txtime);
 
             if (current_time < txtime - flow->delta) {
-                rte_sleep(txtime - flow->delta - current_time, timer_hz);
+                rte_sleep(txtime - flow->delta - current_time);
             } else if (current_time > txtime - flow->delta + FUDGE_FACTOR) {
                 // RTE_LOG(INFO, EAL, "Missed deadline\n");
                 num_missed_deadlines++;
@@ -341,7 +366,7 @@ int main(int argc, char *argv[]) {
                 continue;
             }
 
-            if (sche_single(pkts[flow_id], flow->net, txtime, msgs[flow_id], flow->size) != 1) {
+            if (sche_single(pkts[flow_id], flow->net, txtime, NULL, 0) != 1) {
                 printf("[!] failed to send packet for %d-th flow", flow_id);
             }
         }
