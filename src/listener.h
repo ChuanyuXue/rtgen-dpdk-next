@@ -1,5 +1,5 @@
-#ifndef _LISTENER_H_
-#define _LISTENER_H_
+#ifndef LISTENER_H_
+#define LISTENER_H_
 
 #include "engine_dpdk.h"
 

@@ -1,5 +1,13 @@
-#ifndef _FLOW_H_
-#define _FLOW_H_
+/*
+Author: <Chuanyu> (skewcy@gmail.com)
+flow.h (c) 2024
+Desc: description
+Created:  2024-01-14T19:09:14.003Z
+*/
+
+
+#ifndef SRC_FLOW_H_
+#define SRC_FLOW_H_
 
 #include "engine_dpdk.h"
 
@@ -89,11 +97,6 @@ struct flow {
     struct interface_config *net;
 };
 
-extern struct flow flows[MAX_NUM_FLOWS];
-extern int num_flows;
-
-void destroy_interface(struct interface_config *interface);
-
 struct flow *create_flow(
     int size,
     int priority,
@@ -102,13 +105,6 @@ struct flow *create_flow(
     uint64_t offset_sec,
     uint64_t offset_nsec,
     struct interface_config *net);
-
-void destroy_flow(struct flow *flow);
-void init_flow_timer(struct flow *flow, uint64_t base);
-void inc_flow_timer(struct flow *flow);
-
-/* address_src is not used now
-port_src and port_dst are the same */
 
 struct interface_config *create_interface(
     int port,
@@ -147,8 +143,15 @@ struct flow_state {
     int num_flows;
 };
 
+extern struct flow flows[MAX_NUM_FLOWS];
+extern int num_flows;
+
+void init_flow_timer(struct flow *flow, uint64_t base);
+void inc_flow_timer(struct flow *flow);
 struct flow_state *create_flow_state();
 void destroy_flow_state(struct flow_state *state);
 void add_flow(struct flow_state *state, struct flow *flow);
+void destroy_flow(struct flow *flow);
+void destroy_interface(struct interface_config *interface);
 
 #endif

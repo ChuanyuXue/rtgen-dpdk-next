@@ -7,6 +7,8 @@
         "engine_dpdk.h": "c",
         "header_dpdk.h": "c",
         "rte_common.h": "c",
-        "rte_mbuf_core.h": "c"
+        "rte_mbuf_core.h": "c",
+        "talker.h": "c",
+        "utility.h": "c"
     }
 }

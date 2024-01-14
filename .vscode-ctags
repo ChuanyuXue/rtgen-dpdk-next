@@ -1939,8 +1939,8 @@ eims_value	config/igb/igb.h	/^	u32 eims_value;			\/* EIMS mask value *\/$/;"	m	s
 en_mng_pt	config/igb/igb.h	/^	u32 en_mng_pt;$/;"	m	struct:igb_adapter	typeref:typename:u32
 enable_fqtss	config/igb/igb_main.c	/^static void enable_fqtss(struct igb_adapter *adapter, bool enable)$/;"	f	typeref:typename:void	file:
 enable_nic_hwtimestamping	src/engine_dpdk.c	/^int enable_nic_hwtimestamping(int fd, const char *dev_name)$/;"	f	typeref:typename:int
-enable_timesync	dpdk/cy_func.c	/^int enable_timesync(void)$/;"	f	typeref:typename:int
-enable_timesync	dpdk/cy_func_multicore.c	/^int enable_timesync(void)$/;"	f	typeref:typename:int
+enable_synchronization	dpdk/cy_func.c	/^int enable_synchronization(void)$/;"	f	typeref:typename:int
+enable_synchronization	dpdk/cy_func_multicore.c	/^int enable_synchronization(void)$/;"	f	typeref:typename:int
 eth_flags	config/igb/e1000_hw.h	/^	struct e1000_sfp_flags eth_flags;$/;"	m	struct:e1000_dev_spec_82575	typeref:struct:e1000_sfp_flags
 ether_hdr	src/dpdk.h	/^struct ether_hdr$/;"	s
 ether_type	src/dpdk.h	/^    uint16_t ether_type;          \/**< Frame type. *\/$/;"	m	struct:ether_hdr	typeref:typename:uint16_t

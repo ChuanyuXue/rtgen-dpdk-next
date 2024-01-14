@@ -1,3 +1,10 @@
+/*
+Author: <Chuanyu> (skewcy@gmail.com)
+talker.c (c) 2024
+Desc: description
+Created:  2024-01-14T19:22:23.877Z
+*/
+
 #include "talker.h"
 
 void usage(char *progname) {
@@ -40,7 +47,8 @@ int parser(int argc, char *argv[]) {
         if (c == -1)
             break;  // No more options
 
-        c = getopt_long(argc, argv, "i:q:k:d:p:o:t:b:l:m:avswh", long_options, &option_index);
+        c = getopt_long(argc, argv, "i:q:k:d:p:o:t:b:l:m:avswh",
+                        long_options, &option_index);
         switch (c) {
             case 'i':
                 pit_port = atoi(optarg);
@@ -134,13 +142,11 @@ void parse_command_arguments(struct flow_state *state) {
 void parse_config_file(struct flow_state *state, const char *config_path) {
     int port;
     int queue;
-    char mac_src[18];
     char mac_dst[18];
     int vlan_enabled;
     char vlan[6];
     char priority[2];
     int ip_enabled;
-    char ip_src[16];
     char ip_dst[16];
     char port_src[6];
     char port_dst[6];
@@ -170,11 +176,11 @@ void parse_config_file(struct flow_state *state, const char *config_path) {
                &size);
 
         /*   Check vlan config */
-        printf("MAC_DST: %s\n", mac_dst);
-        printf("VLAN: %s\n", vlan);
-        printf("PRIORITY: %s\n", priority);
-        printf("OFFSEC SEC: %ld\n", offset_sec);
-        printf("OFFSET NSEC: %ld\n", offset_nsec);
+        // printf("MAC_DST: %s\n", mac_dst);
+        // printf("VLAN: %s\n", vlan);
+        // printf("PRIORITY: %s\n", priority);
+        // printf("OFFSEC SEC: %ld\n", offset_sec);
+        // printf("OFFSET NSEC: %ld\n", offset_nsec);
 
         if (strcmp(vlan, "-") == 0) {
             vlan_enabled = 0;
@@ -209,7 +215,8 @@ void parse_config_file(struct flow_state *state, const char *config_path) {
                 port, queue, mac_dst, vlan_enabled, atoi(vlan), atoi(priority),
                 ip_enabled, ip_dst, atoi(port_src), atoi(port_dst));
 
-        struct flow *flow = create_flow(size, atoi(priority), delta, period, offset_sec,
+        struct flow *flow = create_flow(size, atoi(priority),
+                                        delta, period, offset_sec,
                                         offset_nsec, config);
         add_flow(state, flow);
     }
@@ -225,8 +232,7 @@ int main(int argc, char *argv[]) {
         printf("[!] failed to initialize EAL");
     }
 
-    pit_timer_hz = rte_get_timer_hz();
-    rte_sleep(ONE_SECOND_IN_NS * 1);
+    sleep(ONE_SECOND_IN_NS * 1);
 
     /*   Initialize the flows from the config file or command line arguments */
     struct flow_state *state = create_flow_state();
@@ -240,13 +246,10 @@ int main(int argc, char *argv[]) {
     struct schedule_state *schedule = create_schedule_state(state);
 
     /*   Configure the port and queue for each flow */
-    struct rte_mempool *mbuf_pool = create_mbuf_pool();
+    void *mbuf_pool = create_mbuf_pool();
     int port_id, queue_id;
     struct dev_state *dev_state;
     struct queue_state *queue_state;
-
-    /* Config rx queue*/
-    /* Idk why it triggers segmentation fault without this*/
 
     for (int i = 0; i < state->num_flows; i++) {
         /* Configure port */
@@ -257,6 +260,8 @@ int main(int argc, char *argv[]) {
         if (dev_state->is_existed == 1 && dev_state->is_configured != 1) {
             configure_port(port_id);
             dev_state->is_configured = 1;
+            /* Config rx queue*/
+            /* Idk why it triggers segmentation fault without this*/
             configure_rx_queue(0, 0, mbuf_pool);
         }
 
@@ -284,13 +289,13 @@ int main(int argc, char *argv[]) {
     /* Enable timesync */
     for (port_id = 0; port_id < MAX_AVAILABLE_PORTS; port_id++) {
         if (dev_state_list[port_id].is_configured == 1 && dev_state_list[port_id].is_synced != 1) {
-            enable_timesync(port_id);
+            enable_synchronization(port_id);
             dev_state_list[port_id].is_synced = 1;
         }
     }
 
     /*   Prepare packets */
-    struct rte_mbuf *pkts[state->num_flows];
+    void *pkts[state->num_flows];
     char *msgs[state->num_flows];
     for (int i = 0; i < state->num_flows; i++) {
         pkts[i] = allocate_packet(mbuf_pool);
@@ -309,7 +314,6 @@ int main(int argc, char *argv[]) {
 
     /* Main loop*/
     printf("Start sending packets...\n");
-    printf("Current lcores: %d\n", rte_lcore_id());
     for (port_id = 0; port_id < MAX_AVAILABLE_PORTS; port_id++) {
         if (dev_state_list[port_id].is_configured == 1) {
             printf("Port %d is configured\n", port_id);
@@ -320,7 +324,7 @@ int main(int argc, char *argv[]) {
     uint64_t current_time;
 
     /*[TODO]: Consider multiple ports*/
-    rte_eth_read_clock(pit_port, &current_time);
+    read_clock(pit_port, &current_time);
     if (pit_offset) {
         base_time = pit_offset * ONE_SECOND_IN_NS + pit_ns_offset;
     } else {
@@ -343,7 +347,7 @@ int main(int argc, char *argv[]) {
     printf("Current time: %lu\n", current_time);
     while (current_time < base_time || (current_time - base_time) / ONE_SECOND_IN_NS < pit_runtime) {
         for (it_frame = 0; it_frame < schedule->num_frames_per_cycle; it_frame++) {
-            rte_eth_read_clock(pit_port, &current_time);
+            read_clock(pit_port, &current_time);
 
             flow_id = schedule->order[it_frame];
             flow = state->flows[flow_id];
@@ -358,9 +362,8 @@ int main(int argc, char *argv[]) {
             printf("Txtime: %lu\n", txtime);
 
             if (current_time < txtime - flow->delta) {
-                rte_sleep(txtime - flow->delta - current_time);
+                sleep(txtime - flow->delta - current_time);
             } else if (current_time > txtime - flow->delta + FUDGE_FACTOR) {
-                // RTE_LOG(INFO, EAL, "Missed deadline\n");
                 num_missed_deadlines++;
                 count++;
                 continue;

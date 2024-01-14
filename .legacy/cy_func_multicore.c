@@ -34,7 +34,7 @@ struct rte_mempool *create_mbuf_pool(int);
 int configure_port(int);
 int check_offload_capabilities(void);
 int register_timestamping(struct rte_eth_dev_info *dev_info);
-int enable_timesync(void);
+int enable_synchronization(void);
 struct rte_mbuf *allocate_packet(void);
 void prepare_packet(struct rte_mbuf *pkt, const char *data, size_t data_size);
 int tx_loop(void *args);
@@ -124,7 +124,7 @@ int register_timestamping(struct rte_eth_dev_info *dev_info)
     return ret; // Return 0 on success or the error code on failure
 }
 
-int enable_timesync(void)
+int enable_synchronization(void)
 {
     int ret = rte_eth_timesync_enable(0);
     if (ret != 0)
@@ -394,7 +394,7 @@ int main(int argc, char **argv)
     }
 
     // Enable hardware timesync.
-    ret = enable_timesync();
+    ret = enable_synchronization();
     if (ret != 0)
     {
         rte_exit(EXIT_FAILURE, "Hardware timesync enable failed\n");

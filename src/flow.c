@@ -1,3 +1,11 @@
+/*
+Author: <Chuanyu> (skewcy@gmail.com)
+flow.c (c) 2024
+Desc: description
+Created:  2024-01-14T19:09:23.274Z
+*/
+
+
 #include "flow.h"
 
 int pit_port = DEFAULT_PORT;
@@ -24,7 +32,7 @@ int pit_loopback = DEFAULT_LOOPBACK_FLAG;
 int pit_relay = DEFAULT_RELAY_FLAG;
 int pit_multi_flow = DEFAULT_MULTI_FLOW;
 uint64_t pit_runtime = DEFAULT_RUNTIME;
-char *pit_config_path = DEFAULT_CONFIG_PATH;
+char *pit_config_path = (char *)DEFAULT_CONFIG_PATH;
 
 struct interface_config *create_interface(int port,
                                           int queue,
@@ -36,7 +44,8 @@ struct interface_config *create_interface(int port,
                                           char *ip_dst,
                                           int port_src,
                                           int port_dst) {
-    struct interface_config *interface = (struct interface_config *)malloc(sizeof(struct interface_config));
+    struct interface_config *interface = (struct interface_config *)malloc(
+        sizeof(struct interface_config));
 
     if (interface == NULL) {
         printf("malloc failed for creating interface");
@@ -94,8 +103,8 @@ void destroy_flow(struct flow *flow) {
     free(flow);
 }
 
-void init_flow_timer(struct flow *flow, uint64_t basetime) {
-    flow->sche_time = basetime + flow->offset_sec * ONE_SECOND_IN_NS + flow->offset_nsec;
+void init_flow_timer(struct flow *flow, uint64_t base) {
+    flow->sche_time = base + flow->offset_sec * ONE_SECOND_IN_NS + flow->offset_nsec;
 }
 
 void inc_flow_timer(struct flow *flow) {
@@ -103,7 +112,8 @@ void inc_flow_timer(struct flow *flow) {
 }
 
 struct flow_state *create_flow_state() {
-    struct flow_state *flow_state = (struct flow_state *)malloc(sizeof(struct flow_state));
+    struct flow_state *flow_state = (struct flow_state *)malloc(
+        sizeof(struct flow_state));
 
     if (flow_state == NULL) {
         printf("malloc failed for creating flow state");
