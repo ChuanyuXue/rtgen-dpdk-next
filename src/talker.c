@@ -250,7 +250,6 @@ int main(int argc, char *argv[]) {
     int port_id, queue_id;
     struct dev_state *dev_state;
     struct queue_state *queue_state;
-
     for (int i = 0; i < state->num_flows; i++) {
         /* Configure port */
         port_id = state->flows[i]->net->port;
@@ -271,9 +270,15 @@ int main(int argc, char *argv[]) {
             configure_tx_queue(port_id, queue_id);
             queue_state->is_configured = 1;
         }
+    }
 
-        /* Start port */
-        if (dev_state->is_running != 1 && dev_state->is_configured == 1) {
+    /* Configure queues for PTP client*/
+    configure_tx_queue(port_id, NUM_TX_QUEUE - 1);
+    configure_rx_queue(port_id, NUM_RX_QUEUE - 1, mbuf_pool);
+
+    /* Start port*/
+    for (port_id = 0; port_id < MAX_AVAILABLE_PORTS; port_id++) {
+        if (dev_state_list[port_id].is_configured == 1 && dev_state_list[port_id].is_running != 1) {
             start_port(port_id);
             dev_state_list[port_id].is_running = 1;
         }
@@ -293,6 +298,14 @@ int main(int argc, char *argv[]) {
             dev_state_list[port_id].is_synced = 1;
         }
     }
+
+    int *sync_args = (int *)malloc(sizeof(int) * 2);
+    sync_args[0] = 0;
+    sync_args[1] = NUM_TX_QUEUE - 1;
+    sync_args[2] = NUM_RX_QUEUE - 1;
+
+    printf("Start PTP client...\n");
+    lcore_main((void *)sync_args);
 
     /*   Prepare packets */
     void *pkts[state->num_flows];

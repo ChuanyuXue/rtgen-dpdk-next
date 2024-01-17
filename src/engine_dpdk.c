@@ -56,6 +56,7 @@ void configure_port(int port_id) {
     struct rte_eth_conf port_conf = {
         .txmode = {
             .offloads = RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP},
+        // .rxmode = {.offloads = RTE_ETH_RX_OFFLOAD_TIMESTAMP}
     };
 
     int ret = rte_eth_dev_configure(port_id,
@@ -111,6 +112,14 @@ void enable_synchronization(int port_id) {
     if (ret != 0) {
         rte_exit(EXIT_FAILURE,
                  "Cannot enable timesync for port %d -- Error %d\n", 0, ret);
+    }
+
+    /* Idk why we need promiscuous model for synchronization. This is copied from the official ptp-client example*/
+    ret = rte_eth_promiscuous_enable(port_id);
+    if (ret != 0) {
+        rte_exit(EXIT_FAILURE,
+                 "Cannot enable promiscuous mode for port %d -- Error %d\n", 0,
+                 ret);
     }
 }
 

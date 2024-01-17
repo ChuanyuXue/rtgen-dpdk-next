@@ -80,7 +80,7 @@ void sort(uint64_t time[], int flow_id[], int n) {
 }
 
 uint64_t calculate_cycle(const struct flow_state *state) {
-    uint64_t *periods = (uint64_t *)(sizeof(uint64_t) * state->num_flows);
+    uint64_t *periods = (uint64_t *)malloc(sizeof(uint64_t) * state->num_flows);
     if (periods == NULL) {
         printf("malloc failed for creating periods");
     }

@@ -9,10 +9,10 @@ BUILDDIR = build
 $(shell mkdir -p $(BUILDDIR))
 
 # Define the executables
-talker: $(BUILDDIR)/talker.o $(BUILDDIR)/flow.o  $(BUILDDIR)/engine.o $(BUILDDIR)/sche.o $(BUILDDIR)/utility.o $(BUILDDIR)/header.o
+talker: $(BUILDDIR)/talker.o $(BUILDDIR)/flow.o  $(BUILDDIR)/engine.o $(BUILDDIR)/sche.o $(BUILDDIR)/utility.o $(BUILDDIR)/header.o $(BUILDDIR)/sync.o
 	$(CC) -o $(BUILDDIR)/$@ $^ $(DPDK_LIBS) $(DEBUG)
 
-listener: $(BUILDDIR)/listener.o $(BUILDDIR)/flow.o  $(BUILDDIR)/engine.o $(BUILDDIR)/utility.o $(BUILDDIR)/header.o
+listener: $(BUILDDIR)/listener.o $(BUILDDIR)/flow.o  $(BUILDDIR)/engine.o $(BUILDDIR)/utility.o $(BUILDDIR)/header.o $(BUILDDIR)/sync.o
 	$(CC)  -o $(BUILDDIR)/$@ $^ $(DPDK_LIBS) $(DEBUG)
 
 # Define the object files
@@ -30,6 +30,9 @@ $(BUILDDIR)/engine.o: engine_dpdk.c engine_dpdk.h  flow.h
 
 $(BUILDDIR)/header.o: header_dpdk.c header_dpdk.h
 	$(CC) -c -o $@ $< $(DPDK_CFLAGS) 
+
+$(BUILDDIR)/sync.o: ptpclient_dpdk.c ptpclient_dpdk.h
+	$(CC) -c -o $@ $< $(DPDK_CFLAGS)
 
 $(BUILDDIR)/listener.o: listener.c  flow.h
 	$(CC) -c -o $@ $<

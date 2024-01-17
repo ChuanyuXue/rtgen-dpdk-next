@@ -5,7 +5,6 @@ Desc: description
 Created:  2024-01-14T19:47:57.283Z
 */
 
-
 #ifndef SRC_TALKER_H_
 #define SRC_TALKER_H_
 #include <getopt.h>
@@ -13,6 +12,7 @@ Created:  2024-01-14T19:47:57.283Z
 
 #include "engine_dpdk.h"
 #include "flow.h"
+#include "ptpclient_dpdk.h"
 #include "sche.h"
 #include "talker.h"
 
