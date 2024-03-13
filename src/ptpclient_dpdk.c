@@ -88,7 +88,7 @@ parse_sync(struct ptpv2_data_slave_ordinary *ptp_data, uint16_t rx_tstamp_idx) {
 }
 
 static void
-parse_fup(struct ptpv2_data_slave_ordinary *ptp_data, struct rte_mempool *mbuf_pool) {
+parse_fup(struct ptpv2_data_slave_ordinary *ptp_data, struct rte_mempool *mbuf_pool, int txq_id) {
     struct rte_ether_hdr *eth_hdr;
     struct rte_ether_addr eth_addr;
     struct ptp_header *ptp_hdr;
@@ -184,6 +184,7 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data, struct rte_mempool *mbuf_p
         /* Transmit the packet. */
         /* By default using queue 0*/
         rte_eth_tx_burst(ptp_data->portid, 0, &created_pkt, 1);
+        printf("Delay request sent!\n");
 
         wait_us = 0;
         ptp_data->tstamp3.tv_nsec = 0;
@@ -232,7 +233,7 @@ parse_drsp(struct ptpv2_data_slave_ordinary *ptp_data) {
 
 /* Parse ptp frames. 8< */
 static void
-parse_ptp_frames(uint16_t portid, struct rte_mbuf *m) {
+parse_ptp_frames(uint16_t portid, struct rte_mbuf *m, int txq_id) {
     struct ptp_header *ptp_hdr;
     struct rte_ether_hdr *eth_hdr;
     uint16_t eth_type;
@@ -245,12 +246,16 @@ parse_ptp_frames(uint16_t portid, struct rte_mbuf *m) {
         ptp_data.portid = portid;
         ptp_hdr = (struct ptp_header *)(rte_pktmbuf_mtod(m, char *) + sizeof(struct rte_ether_hdr));
 
+        /* Delay requests after the FOLLOW UP msg */
+        printf("PTP message received!\n");
+
         switch (ptp_hdr->msg_type) {
             case SYNC:
                 parse_sync(&ptp_data, m->timesync);
                 break;
             case FOLLOW_UP:
-                parse_fup(&ptp_data, m->pool);
+                printf("Follow up message received!\n");
+                parse_fup(&ptp_data, m->pool, txq_id);
                 break;
             case DELAY_RESP:
                 parse_drsp(&ptp_data);
@@ -282,10 +287,13 @@ int lcore_main(void *args) {
 
     while (1) {
         nb_rx = rte_eth_rx_burst(port_id, rx_queue_id, &m, 1);
-        if (likely(nb_rx == 0))
+        if (likely(nb_rx == 0)) {
+            // rte_delay_us_sleep(1);
             continue;
+        }
+        printf("Received %d packets\n", nb_rx);
         if (m->ol_flags & RTE_MBUF_F_RX_IEEE1588_PTP)
-            parse_ptp_frames(port_id, m);
+            parse_ptp_frames(port_id, m, tx_queue_id);
         rte_pktmbuf_free(m);
     }
     return 0;

@@ -274,7 +274,6 @@ int main(int argc, char *argv[]) {
 
     /* Configure queues for PTP client*/
     configure_tx_queue(port_id, NUM_TX_QUEUE - 1);
-    configure_rx_queue(port_id, NUM_RX_QUEUE - 1, mbuf_pool);
 
     /* Start port*/
     for (port_id = 0; port_id < MAX_AVAILABLE_PORTS; port_id++) {
@@ -299,10 +298,10 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    int *sync_args = (int *)malloc(sizeof(int) * 2);
+    int *sync_args = (int *)malloc(sizeof(int) * 3);
     sync_args[0] = 0;
     sync_args[1] = NUM_TX_QUEUE - 1;
-    sync_args[2] = NUM_RX_QUEUE - 1;
+    sync_args[2] = 0;
 
     printf("Start PTP client...\n");
     lcore_main((void *)sync_args);

@@ -147,9 +147,9 @@ static inline int port_init(uint16_t port, struct rte_mempool *mbuf_pool);
 static int64_t delta_eval(struct ptpv2_data_slave_ordinary *ptp_data);
 static void parse_sync(struct ptpv2_data_slave_ordinary *ptp_data, uint16_t rx_tstamp_idx);
 static void
-parse_fup(struct ptpv2_data_slave_ordinary *ptp_data, struct rte_mempool *mbuf_pool);
+parse_fup(struct ptpv2_data_slave_ordinary *ptp_data, struct rte_mempool *mbuf_pool, int txq_id);
 static void parse_drsp(struct ptpv2_data_slave_ordinary *ptp_data);
-static void parse_ptp_frames(uint16_t portid, struct rte_mbuf *m);
+static void parse_ptp_frames(uint16_t portid, struct rte_mbuf *m, int txq_id);
 void print_ptp_time(int portid);
 int lcore_main(void *args);
 int ptpclient_dpdk(int port_id, int queue_id);

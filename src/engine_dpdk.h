@@ -23,11 +23,11 @@ Created:  2024-01-14T19:09:29.323Z
 #include "utility.h"
 
 #define MAX_AVAILABLE_PORTS 4
-#define NUM_MBUF_ELEMENTS 128
+#define NUM_MBUF_ELEMENTS 1024
 #define NUM_TX_QUEUE 2
 #define NUM_RX_QUEUE 1
 #define NUM_TX_DESC 32
-#define NUM_RX_DESC 32
+#define NUM_RX_DESC 256
 
 extern uint64_t pit_timer_hz;
 
