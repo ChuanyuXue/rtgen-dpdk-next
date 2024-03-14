@@ -304,7 +304,7 @@ int main(int argc, char *argv[]) {
     sync_args[2] = 0;
 
     printf("Start PTP client...\n");
-    lcore_main((void *)sync_args);
+    sync_loop((void *)sync_args);
 
     /*   Prepare packets */
     void *pkts[state->num_flows];

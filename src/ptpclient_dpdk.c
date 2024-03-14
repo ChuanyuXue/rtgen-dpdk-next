@@ -275,7 +275,7 @@ void print_ptp_time(int portid) {
            ctime(&ts), net_time.tv_nsec);
 }
 
-int lcore_main(void *args) {
+int sync_loop(void *args) {
     int port_id = ((int *)args)[0];
     int tx_queue_id = ((int *)args)[1];
     int rx_queue_id = ((int *)args)[2];

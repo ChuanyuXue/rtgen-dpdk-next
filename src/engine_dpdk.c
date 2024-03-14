@@ -241,6 +241,7 @@ void sleep(uint64_t ns) {
 }
 
 void read_clock(int port, uint64_t *time) {
+    /* Disable warning info*/
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     int ret = rte_eth_read_clock(port, time);

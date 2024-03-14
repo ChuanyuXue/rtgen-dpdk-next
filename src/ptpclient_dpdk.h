@@ -151,7 +151,7 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data, struct rte_mempool *mbuf_p
 static void parse_drsp(struct ptpv2_data_slave_ordinary *ptp_data);
 static void parse_ptp_frames(uint16_t portid, struct rte_mbuf *m, int txq_id);
 void print_ptp_time(int portid);
-int lcore_main(void *args);
+int sync_loop(void *args);
 int ptpclient_dpdk(int port_id, int queue_id);
 
 #endif  // SRC_PTPCLIENT_DPDK_H_
