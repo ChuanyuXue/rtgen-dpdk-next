@@ -5,7 +5,6 @@ Desc: description
 Created:  2024-01-14T19:09:14.003Z
 */
 
-
 #ifndef SRC_FLOW_H_
 #define SRC_FLOW_H_
 
@@ -16,7 +15,7 @@ Created:  2024-01-14T19:09:14.003Z
 #define START_DELAY_FROM_NOW_IN_SEC 3
 
 #define ONE_SECOND_IN_NS 1000000000ULL
-#define FUDGE_FACTOR 1000000ULL
+#define FUDGE_FACTOR 1000000ULL /* Covers CPU delay in the paper */
 
 #define DEFAULT_MULTI_FLOW 0
 #define DEFAULT_PORT 0
@@ -35,7 +34,7 @@ Created:  2024-01-14T19:09:14.003Z
 #define DEFAULT_OFFSET 0
 #define DEFAULT_NS_OFFSET 0
 #define DEFAULT_PAYLOAD 256
-#define DEFAULT_TIME_DELTA 1000000
+#define DEFAULT_TIME_DELTA 1000000 /* Fetch time Delta in the paper*/
 #define DEFAULT_RUNTIME 9999999999
 
 #define DEFAULT_HW_FLAG 1

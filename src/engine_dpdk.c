@@ -189,6 +189,8 @@ void prepare_packet_offload(void *pkt, int txtime_enabled,
 int sche_single(void *pkt, struct interface_config *interface, uint64_t txtime,
                 char msg[], const int msg_size) {
     struct rte_mbuf *mbuf = (struct rte_mbuf *)pkt;
+    int port_id = interface->port;
+    int queue_id = interface->queue;
     int sent;
     uint64_t start_send;
 
@@ -208,8 +210,7 @@ int sche_single(void *pkt, struct interface_config *interface, uint64_t txtime,
 
     start_send = rte_get_timer_cycles();
     do {
-        sent = rte_eth_tx_burst(0, 0, &mbuf, 1);
-
+        sent = rte_eth_tx_burst(port_id, queue_id, &mbuf, 1);
     } while (sent == 0 && rte_get_timer_cycles() - start_send < FUDGE_FACTOR);
 
     return sent;

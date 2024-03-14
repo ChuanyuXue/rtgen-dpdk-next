@@ -20,7 +20,7 @@ struct schedule_state {
     uint64_t *sending_time;
 };
 
-struct schedule_state *create_schedule_state(const struct flow_state *state);
+struct schedule_state *create_schedule_state(const struct flow_state *state, int num_queues);
 uint64_t gcd(uint64_t a, uint64_t b);
 uint64_t lcm(uint64_t a, uint64_t b);
 uint64_t lcm_of_array(uint64_t *arr, uint64_t n);

@@ -222,6 +222,49 @@ void parse_config_file(struct flow_state *state, const char *config_path) {
     }
 };
 
+int tx_loop(void *args) {
+    struct tx_loop_args *tx_args = (struct tx_loop_args *)args;
+    uint64_t base_time = tx_args->base_time;
+    int queue_id = tx_args->queue_id;
+    int port_id = tx_args->port_id;
+    struct flow_state *state = tx_args->state;
+    struct schedule_state *schedule = tx_args->schedule_state;
+
+    uint64_t current_time;
+    read_clock(port_id, &current_time);
+
+    int it_frame;
+    int flow_id;
+    int count = 0;
+    uint64_t txtime;
+    struct flow *flow;
+
+    while (current_time < base_time || (current_time - base_time) / ONE_SECOND_IN_NS < pit_runtime) {
+        for (it_frame = 0; it_frame < schedule->num_frames_per_cycle; it_frame++)
+        {
+            read_clock(port_id, &current_time);
+            flow_id = schedule->order[it_frame];
+            flow = state->flows[flow_id];
+
+            inc_flow_timer(flow);
+            txtime = flow->sche_time;
+
+            if (current_time < txtime - flow->delta) {
+                sleep(txtime - flow->delta - current_time);
+            } else if (current_time > txtime - flow->delta + FUDGE_FACTOR) {
+                count++;
+                continue;
+            }
+
+            if (sche_single(pkts[flow_id], flow->net, txtime, NULL, 0) != 1) {
+                printf("[!] failed to send packet for %d-th flow", flow_id);
+            }
+
+            
+        }
+    }
+}
+
 int main(int argc, char *argv[]) {
     if (parser(argc, argv) == -1) {
         return 0;
@@ -242,12 +285,10 @@ int main(int argc, char *argv[]) {
         parse_config_file(state, pit_config_path);
     }
 
-    /* Initialize the schedule*/
-    struct schedule_state *schedule = create_schedule_state(state);
-
     /*   Configure the port and queue for each flow */
     void *mbuf_pool = create_mbuf_pool();
     int port_id, queue_id;
+    int tx_queue_nums, rx_queue_nums = 0;
     struct dev_state *dev_state;
     struct queue_state *queue_state;
     for (int i = 0; i < state->num_flows; i++) {
@@ -262,6 +303,7 @@ int main(int argc, char *argv[]) {
             /* Config rx queue*/
             /* Idk why it triggers segmentation fault without this*/
             configure_rx_queue(0, 0, mbuf_pool);
+            rx_queue_nums++;
         }
 
         /* Configure tx queue */
@@ -269,6 +311,7 @@ int main(int argc, char *argv[]) {
         if (queue_state->is_existed == 1 && queue_state->is_configured != 1) {
             configure_tx_queue(port_id, queue_id);
             queue_state->is_configured = 1;
+            tx_queue_nums++;
         }
     }
 
@@ -289,6 +332,9 @@ int main(int argc, char *argv[]) {
             check_offload_capabilities(port_id);
         }
     }
+
+    /* Initialize the schedule*/
+    struct schedule_state *schedule = create_schedule_state(state, tx_queue_nums);
 
     /* Enable timesync */
     for (port_id = 0; port_id < MAX_AVAILABLE_PORTS; port_id++) {

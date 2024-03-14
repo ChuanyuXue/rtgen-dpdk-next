@@ -43,4 +43,14 @@ int parser(int argc, char *argv[]);
 void parse_command_arguments(struct flow_state *state);
 void parse_config_file(struct flow_state *state, const char *config_path);
 
+struct tx_loop_args {
+    int port_id;
+    int queue_id;
+    uint64_t base_time;
+    struct flow_state *state;
+    struct schedule_state *schedule_state;
+};
+
+int tx_loop(void *args);
+
 #endif
