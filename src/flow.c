@@ -5,7 +5,6 @@ Desc: description
 Created:  2024-01-14T19:09:23.274Z
 */
 
-
 #include "flow.h"
 
 int pit_port = DEFAULT_PORT;
@@ -48,7 +47,7 @@ struct interface_config *create_interface(int port,
         sizeof(struct interface_config));
 
     if (interface == NULL) {
-        printf("malloc failed for creating interface");
+        printf("malloc failed for creating interface\n");
         return NULL;
     }
 
@@ -83,7 +82,7 @@ struct flow *create_flow(
     struct flow *flow = (struct flow *)malloc(sizeof(struct flow));
 
     if (flow == NULL) {
-        printf("malloc failed for creating flow");
+        printf("malloc failed for creating flow\n");
         return NULL;
     }
     flow->size = size;
@@ -111,12 +110,18 @@ void inc_flow_timer(struct flow *flow) {
     flow->sche_time += flow->period;
 }
 
+void init_flowset_timer(struct flow_state *state, uint64_t base) {
+    for (int i = 0; i < state->num_flows; i++) {
+        init_flow_timer(state->flows[i], base);
+    }
+}
+
 struct flow_state *create_flow_state() {
     struct flow_state *flow_state = (struct flow_state *)malloc(
         sizeof(struct flow_state));
 
     if (flow_state == NULL) {
-        printf("malloc failed for creating flow state");
+        printf("malloc failed for creating flow state\n");
         return NULL;
     }
     for (int i = 0; i < MAX_NUM_FLOWS; i++) {
@@ -135,7 +140,7 @@ void destroy_flow_state(struct flow_state *flow_state) {
 
 void add_flow(struct flow_state *flow_state, struct flow *flow) {
     if (flow_state->num_flows >= MAX_NUM_FLOWS) {
-        printf("too many flows");
+        printf("too many flows\n");
         return;
     }
     flow_state->flows[flow_state->num_flows] = flow;

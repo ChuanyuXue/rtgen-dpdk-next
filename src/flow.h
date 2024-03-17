@@ -146,6 +146,7 @@ extern struct flow flows[MAX_NUM_FLOWS];
 extern int num_flows;
 
 void init_flow_timer(struct flow *flow, uint64_t base);
+void init_flowset_timer(struct flow_state *state, uint64_t base);
 void inc_flow_timer(struct flow *flow);
 struct flow_state *create_flow_state();
 void destroy_flow_state(struct flow_state *state);

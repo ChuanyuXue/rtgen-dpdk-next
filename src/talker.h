@@ -49,6 +49,7 @@ struct tx_loop_args {
     uint64_t base_time;
     struct flow_state *state;
     struct schedule_state *schedule_state;
+    void **pkts;
 };
 
 int tx_loop(void *args);

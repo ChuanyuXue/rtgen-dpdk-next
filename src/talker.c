@@ -121,7 +121,7 @@ int parser(int argc, char *argv[]) {
                 usage(progname);
                 return -1;
             case '?':
-                printf("[!] invalid arguments");
+                printf("[!] invalid arguments\n");
                 usage(progname);
                 return -1;
         }
@@ -161,7 +161,7 @@ void parse_config_file(struct flow_state *state, const char *config_path) {
 
     FILE *fp = fopen(config_path, "r");
     if (fp == NULL) {
-        printf("[!] failed to open config file");
+        printf("[!] failed to open config file\n");
     }
 
     while (fgets(line, MAX_LINE_LENGTH, fp) != NULL) {
@@ -222,13 +222,46 @@ void parse_config_file(struct flow_state *state, const char *config_path) {
     }
 };
 
+void **prepare_pkts(struct flow_state *state, void *mbuf_pool) {
+    void **pkts = (void **)malloc(state->num_flows * sizeof(void *));
+    char **msgs = (char **)malloc(state->num_flows * sizeof(char *));
+
+    for (int i = 0; i < state->num_flows; i++) {
+        pkts[i] = allocate_packet(mbuf_pool);
+        if (pkts[i] == NULL) {
+            printf("[!] failed to allocate packet for %d-th flow", i);
+        }
+
+        prepare_packet_header(pkts[i], state->flows[i]->size, state->flows[i]->net);
+
+        /* packet payload is set to its flow-id */
+        char *msg = (char *)malloc(state->flows[i]->size);
+        printf("Set payload: %s for flow %d\n", msg, i);
+        msgs[i] = msg;
+
+        prepare_packet_payload(pkts[i], msg, state->flows[i]->size);
+        prepare_packet_offload(pkts[i], pit_hw, pit_etf);
+    }
+
+    free(msgs);
+    return pkts;
+}
+
 int tx_loop(void *args) {
+    int lcore_id = rte_lcore_id();
+    printf("Lcore id: %d is running\n", lcore_id);
     struct tx_loop_args *tx_args = (struct tx_loop_args *)args;
     uint64_t base_time = tx_args->base_time;
     int queue_id = tx_args->queue_id;
     int port_id = tx_args->port_id;
     struct flow_state *state = tx_args->state;
     struct schedule_state *schedule = tx_args->schedule_state;
+    void **pkts = tx_args->pkts;
+
+    if (pkts == NULL) {
+        printf("[!] failed to reterieve packets\n");
+        exit(1);
+    }
 
     uint64_t current_time;
     read_clock(port_id, &current_time);
@@ -240,14 +273,19 @@ int tx_loop(void *args) {
     struct flow *flow;
 
     while (current_time < base_time || (current_time - base_time) / ONE_SECOND_IN_NS < pit_runtime) {
-        for (it_frame = 0; it_frame < schedule->num_frames_per_cycle; it_frame++)
-        {
+        for (it_frame = 0; it_frame < schedule->num_frames_per_cycle; it_frame++) {
             read_clock(port_id, &current_time);
             flow_id = schedule->order[it_frame];
             flow = state->flows[flow_id];
 
             inc_flow_timer(flow);
             txtime = flow->sche_time;
+
+            printf("Lcore id: %d\n", lcore_id);
+            printf("Flow id: %d\n", flow_id);
+            printf("Port id: %d\n", port_id);
+            printf("Current time: %lu\n", current_time);
+            printf("Txtime: %lu\n", txtime);
 
             if (current_time < txtime - flow->delta) {
                 sleep(txtime - flow->delta - current_time);
@@ -257,10 +295,8 @@ int tx_loop(void *args) {
             }
 
             if (sche_single(pkts[flow_id], flow->net, txtime, NULL, 0) != 1) {
-                printf("[!] failed to send packet for %d-th flow", flow_id);
+                printf("[!] failed to send packet for %d-th flow\n", flow_id);
             }
-
-            
         }
     }
 }
@@ -272,7 +308,7 @@ int main(int argc, char *argv[]) {
 
     /*   Set up EAL*/
     if (setup_EAL(argv[0]) < 0) {
-        printf("[!] failed to initialize EAL");
+        printf("[!] failed to initialize EAL\n");
     }
 
     sleep(ONE_SECOND_IN_NS * 1);
@@ -287,10 +323,12 @@ int main(int argc, char *argv[]) {
 
     /*   Configure the port and queue for each flow */
     void *mbuf_pool = create_mbuf_pool();
+    int lcore = 10;
     int port_id, queue_id;
     int tx_queue_nums, rx_queue_nums = 0;
     struct dev_state *dev_state;
     struct queue_state *queue_state;
+
     for (int i = 0; i < state->num_flows; i++) {
         /* Configure port */
         port_id = state->flows[i]->net->port;
@@ -300,9 +338,10 @@ int main(int argc, char *argv[]) {
         if (dev_state->is_existed == 1 && dev_state->is_configured != 1) {
             configure_port(port_id);
             dev_state->is_configured = 1;
+
             /* Config rx queue*/
             /* Idk why it triggers segmentation fault without this*/
-            configure_rx_queue(0, 0, mbuf_pool);
+            configure_rx_queue(port_id, rx_queue_nums, mbuf_pool);
             rx_queue_nums++;
         }
 
@@ -317,8 +356,20 @@ int main(int argc, char *argv[]) {
 
     /* Configure queues for PTP client*/
     configure_tx_queue(port_id, NUM_TX_QUEUE - 1);
+    tx_queue_nums++;
 
     /* Start port*/
+    printf("Starting ports\n");
+
+    // TODO: Add error handling
+    if (tx_queue_nums != NUM_TX_QUEUE) {
+        printf("[Fatal !] not all tx queues are configured\n");
+    }
+
+    if (rx_queue_nums != NUM_RX_QUEUE) {
+        printf("[Fatal !] not all rx queues are configured\n");
+    }
+
     for (port_id = 0; port_id < MAX_AVAILABLE_PORTS; port_id++) {
         if (dev_state_list[port_id].is_configured == 1 && dev_state_list[port_id].is_running != 1) {
             start_port(port_id);
@@ -327,6 +378,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Check offload */
+    printf("Checking offload capabilities\n");
     for (port_id = 0; port_id < MAX_AVAILABLE_PORTS; port_id++) {
         if (dev_state_list[port_id].is_configured == 1) {
             check_offload_capabilities(port_id);
@@ -334,50 +386,21 @@ int main(int argc, char *argv[]) {
     }
 
     /* Initialize the schedule*/
+    printf("Initializing schedule\n");
     struct schedule_state *schedule = create_schedule_state(state, tx_queue_nums);
 
     /* Enable timesync */
+    // TODO: Enable sync when multi-core is ready
+    printf("Enabling synchronization\n");
     for (port_id = 0; port_id < MAX_AVAILABLE_PORTS; port_id++) {
         if (dev_state_list[port_id].is_configured == 1 && dev_state_list[port_id].is_synced != 1) {
             enable_synchronization(port_id);
+            // ptpclient_dpdk(port_id, NUM_TX_QUEUE - 1, 0, lcore++);
             dev_state_list[port_id].is_synced = 1;
         }
     }
 
-    int *sync_args = (int *)malloc(sizeof(int) * 3);
-    sync_args[0] = 0;
-    sync_args[1] = NUM_TX_QUEUE - 1;
-    sync_args[2] = 0;
-
-    printf("Start PTP client...\n");
-    sync_loop((void *)sync_args);
-
     /*   Prepare packets */
-    void *pkts[state->num_flows];
-    char *msgs[state->num_flows];
-    for (int i = 0; i < state->num_flows; i++) {
-        pkts[i] = allocate_packet(mbuf_pool);
-        if (pkts[i] == NULL) {
-            printf("[!] failed to allocate packet for %d-th flow", i);
-        }
-
-        prepare_packet_header(pkts[i], state->flows[i]->size, state->flows[i]->net);
-        /* packet payload is set to its flow-id */
-        char *msg = (char *)malloc(state->flows[i]->size);
-        printf(msg, "%d", i);
-        msgs[i] = msg;
-        prepare_packet_payload(pkts[i], msg, state->flows[i]->size);
-        prepare_packet_offload(pkts[i], pit_hw, pit_etf);
-    }
-
-    /* Main loop*/
-    printf("Start sending packets...\n");
-    for (port_id = 0; port_id < MAX_AVAILABLE_PORTS; port_id++) {
-        if (dev_state_list[port_id].is_configured == 1) {
-            printf("Port %d is configured\n", port_id);
-        }
-    }
-
     uint64_t base_time;
     uint64_t current_time;
 
@@ -389,47 +412,28 @@ int main(int argc, char *argv[]) {
         base_time = (current_time / ONE_SECOND_IN_NS + 5) * ONE_SECOND_IN_NS;
     }
 
-    int it_frame;
-    int flow_id;
-    int num_missed_deadlines = 0;
-    int count = 0;
-
-    uint64_t txtime = 0;
-
-    for (int i = 0; i < state->num_flows; i++) {
-        init_flow_timer(state->flows[i], base_time);
-    }
-
-    struct flow *flow;
     printf("Base time: %lu\n", base_time);
-    printf("Current time: %lu\n", current_time);
-    while (current_time < base_time || (current_time - base_time) / ONE_SECOND_IN_NS < pit_runtime) {
-        for (it_frame = 0; it_frame < schedule->num_frames_per_cycle; it_frame++) {
-            read_clock(pit_port, &current_time);
+    init_flowset_timer(state, base_time);
 
-            flow_id = schedule->order[it_frame];
-            flow = state->flows[flow_id];
-            port_id = flow->net->port;
+    void **pkts = prepare_pkts(state, mbuf_pool);
 
-            inc_flow_timer(flow);
-            txtime = flow->sche_time;
-
-            printf("Flow id: %d\n", flow_id);
-            printf("Port id: %d\n", port_id);
-            printf("Current time: %lu\n", current_time);
-            printf("Txtime: %lu\n", txtime);
-
-            if (current_time < txtime - flow->delta) {
-                sleep(txtime - flow->delta - current_time);
-            } else if (current_time > txtime - flow->delta + FUDGE_FACTOR) {
-                num_missed_deadlines++;
-                count++;
-                continue;
-            }
-
-            if (sche_single(pkts[flow_id], flow->net, txtime, NULL, 0) != 1) {
-                printf("[!] failed to send packet for %d-th flow", flow_id);
-            }
+    for (queue_id = 0; queue_id < tx_queue_nums; queue_id++) {
+        if (schedule[queue_id].num_frames_per_cycle == 0) {
+            printf("[!] no frames scheduled for queue %d\n", queue_id);
+            continue;
         }
+        struct tx_loop_args tx_args = {
+            .port_id = pit_port,
+            .queue_id = queue_id,
+            .base_time = base_time,
+            .state = state,
+            .schedule_state = schedule,
+            .pkts = pkts,
+        };
+        printf("\nLcore id: %d from main\n", lcore);
+        int ret = rte_eal_remote_launch(tx_loop, &tx_args, lcore++);
     }
+
+    rte_eal_mp_wait_lcore();
+    return 0;
 }

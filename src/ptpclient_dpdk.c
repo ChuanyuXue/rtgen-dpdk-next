@@ -123,7 +123,7 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data, struct rte_mempool *mbuf_p
     if (ptp_data->seqID_FOLLOWUP == ptp_data->seqID_SYNC) {
         ret = rte_eth_macaddr_get(ptp_data->portid, &eth_addr);
         if (ret != 0) {
-            printf("\nCore %u: port %u failed to get MAC address: %s\n",
+            printf("\nCore %u\n: port %u failed to get MAC address: %s\n",
                    rte_lcore_id(), ptp_data->portid,
                    rte_strerror(-ret));
             return;
@@ -184,7 +184,6 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data, struct rte_mempool *mbuf_p
         /* Transmit the packet. */
         /* By default using queue 0*/
         rte_eth_tx_burst(ptp_data->portid, 0, &created_pkt, 1);
-        printf("Delay request sent!\n");
 
         wait_us = 0;
         ptp_data->tstamp3.tv_nsec = 0;
@@ -247,14 +246,11 @@ parse_ptp_frames(uint16_t portid, struct rte_mbuf *m, int txq_id) {
         ptp_hdr = (struct ptp_header *)(rte_pktmbuf_mtod(m, char *) + sizeof(struct rte_ether_hdr));
 
         /* Delay requests after the FOLLOW UP msg */
-        printf("PTP message received!\n");
-
         switch (ptp_hdr->msg_type) {
             case SYNC:
                 parse_sync(&ptp_data, m->timesync);
                 break;
             case FOLLOW_UP:
-                printf("Follow up message received!\n");
                 parse_fup(&ptp_data, m->pool, txq_id);
                 break;
             case DELAY_RESP:
@@ -271,7 +267,7 @@ void print_ptp_time(int portid) {
     struct timespec net_time;
     rte_eth_timesync_read_time(portid, &net_time);
     time_t ts = net_time.tv_sec;
-    printf("\nCurrent PTP Time: %.24s %.9ld ns",
+    printf("\nCurrent PTP Time: %.24s %.9ld ns\n",
            ctime(&ts), net_time.tv_nsec);
 }
 
@@ -291,7 +287,6 @@ int sync_loop(void *args) {
             // rte_delay_us_sleep(1);
             continue;
         }
-        printf("Received %d packets\n", nb_rx);
         if (m->ol_flags & RTE_MBUF_F_RX_IEEE1588_PTP)
             parse_ptp_frames(port_id, m, tx_queue_id);
         rte_pktmbuf_free(m);
@@ -299,14 +294,15 @@ int sync_loop(void *args) {
     return 0;
 }
 
-int ptpclient_dpdk(int port_id, int queue_id) {
+int ptpclient_dpdk(int port_id, int tx_queue, int rx_queue, int lcore) {
     memset(&ptp_data, '\0', sizeof(struct ptpv2_data_slave_ordinary));
     int ret;
 
-    int *sync_args = (int *)malloc(sizeof(int) * 2);
+    int *sync_args = (int *)malloc(sizeof(int) * 3);
     sync_args[0] = port_id;
-    sync_args[1] = queue_id;
-    ret = rte_eal_remote_launch((lcore_function_t *)lcore_main, sync_args, 11);
+    sync_args[1] = tx_queue;
+    sync_args[2] = rx_queue;
+    ret = rte_eal_remote_launch((lcore_function_t *)sync_loop, sync_args, lcore);
     if (ret < 0)
         rte_exit(EXIT_FAILURE, "Could not launch sync process\n");
 }

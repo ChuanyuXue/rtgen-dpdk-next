@@ -188,6 +188,8 @@ void prepare_packet_offload(void *pkt, int txtime_enabled,
 
 int sche_single(void *pkt, struct interface_config *interface, uint64_t txtime,
                 char msg[], const int msg_size) {
+    printf("Schedule single \n");
+    fflush(stdout);
     struct rte_mbuf *mbuf = (struct rte_mbuf *)pkt;
     int port_id = interface->port;
     int queue_id = interface->queue;
@@ -197,10 +199,12 @@ int sche_single(void *pkt, struct interface_config *interface, uint64_t txtime,
     /* Check if the header has been set up*/
     if (unlikely(mbuf->pkt_len == 0)) {
         prepare_packet_header(pkt, msg_size, interface);
+        printf("Prepare header in sche_single\n");
     }
 
     if (msg_size > 0) {
         prepare_packet_payload(pkt, msg, msg_size);
+        printf("Prepare payload in sche_single\n");
     }
 
     *RTE_MBUF_DYNFIELD(pkt,

@@ -11,7 +11,7 @@ struct schedule_state *create_schedule_state(const struct flow_state *state, int
     struct schedule_state *schedule_state = (struct schedule_state *)malloc(
         sizeof(struct schedule_state) * num_queues);
     if (schedule_state == NULL) {
-        printf("malloc failed for creating schedule_state");
+        printf("malloc failed for creating schedule_state\n");
         return NULL;
     }
 
@@ -25,7 +25,7 @@ struct schedule_state *create_schedule_state(const struct flow_state *state, int
         schedule_state[i].order = (int *)malloc(
             sizeof(int) * schedule_state[i].num_frames_per_cycle);
         if (schedule_state[i].order == NULL) {
-            printf("malloc failed for creating order");
+            printf("malloc failed for creating order\n");
             free(schedule_state);
             return NULL;
         }
@@ -34,7 +34,7 @@ struct schedule_state *create_schedule_state(const struct flow_state *state, int
             sizeof(uint64_t) * schedule_state[i].num_frames_per_cycle);
 
         if (schedule_state[i].sending_time == NULL) {
-            printf("malloc failed for creating sending_time");
+            printf("malloc failed for creating sending_time\n");
             free(schedule_state[i].order);
             free(schedule_state);
             return NULL;
@@ -87,7 +87,7 @@ void sort(uint64_t time[], int flow_id[], int n) {
 uint64_t calculate_cycle(const struct flow_state *state) {
     uint64_t *periods = (uint64_t *)malloc(sizeof(uint64_t) * state->num_flows);
     if (periods == NULL) {
-        printf("malloc failed for creating periods");
+        printf("malloc failed for creating periods\n");
     }
     for (int i = 0; i < state->num_flows; i++) {
         periods[i] = state->flows[i]->period;
@@ -127,7 +127,7 @@ void init_schedule_state(struct schedule_state *schedule_state, const struct flo
         uint64_t period = state->flows[i]->period;
         uint64_t offset = state->flows[i]->offset_sec * ONE_SECOND_IN_NS + state->flows[i]->offset_nsec;
         if (offset >= cycle_period) {
-            printf("offset should be less than cycle_period");
+            printf("offset should be less than cycle_period\n");
         }
         for (unsigned int j = 0; j < cycle_period / period; j++) {
             sending_time[index] = offset + j * period;
@@ -152,7 +152,7 @@ void init_schedule_state_per_queue(struct schedule_state *schedule_state, const 
             uint64_t period = state->flows[i]->period;
             uint64_t offset = state->flows[i]->offset_sec * ONE_SECOND_IN_NS + state->flows[i]->offset_nsec;
             if (offset >= cycle_period) {
-                printf("offset should be less than cycle_period");
+                printf("offset should be less than cycle_period\n");
             }
             for (unsigned int j = 0; j < cycle_period / period; j++) {
                 sending_time[index] = offset + j * period;
@@ -163,14 +163,14 @@ void init_schedule_state_per_queue(struct schedule_state *schedule_state, const 
     }
 
     sort(sending_time, order, num_frames);
-    printf("queue_index: %d ", queue_index);
+    printf("queue_index: %d \n", queue_index);
     print_schedule_state(schedule_state);
 }
 
 void print_schedule_state(const struct schedule_state *schedule_state) {
     printf("cycle_period: %lu\n", schedule_state->cycle_period);
     printf("num_frames_per_cycle: %lu\n", schedule_state->num_frames_per_cycle);
-    printf("order: ");
+    printf("order: \n");
     for (unsigned int i = 0; i < schedule_state->num_frames_per_cycle; i++) {
         printf("%d ", schedule_state->order[i]);
     }
