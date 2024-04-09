@@ -224,8 +224,6 @@ void parse_config_file(struct flow_state *state, const char *config_path) {
 
 void **prepare_pkts(struct flow_state *state, void *mbuf_pool) {
     void **pkts = (void **)malloc(state->num_flows * sizeof(void *));
-    char **msgs = (char **)malloc(state->num_flows * sizeof(char *));
-
     for (int i = 0; i < state->num_flows; i++) {
         pkts[i] = allocate_packet(mbuf_pool);
         if (pkts[i] == NULL) {
@@ -236,14 +234,11 @@ void **prepare_pkts(struct flow_state *state, void *mbuf_pool) {
 
         /* packet payload is set to its flow-id */
         char *msg = (char *)malloc(state->flows[i]->size);
-        printf("Set payload: %s for flow %d\n", msg, i);
-        msgs[i] = msg;
+        snprintf(msg, state->flows[i]->size, "%d", i);
 
         prepare_packet_payload(pkts[i], msg, state->flows[i]->size);
         prepare_packet_offload(pkts[i], pit_hw, pit_etf);
     }
-
-    free(msgs);
     return pkts;
 }
 
