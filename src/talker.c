@@ -234,10 +234,15 @@ void **prepare_pkts(struct flow_state *state, void *mbuf_pool) {
 
         /* packet payload is set to its flow-id */
         char *msg = (char *)malloc(state->flows[i]->size);
+        if (msg == NULL) {
+            printf("[!] failed to allocate memory for %d-th flow", i);
+        }
         snprintf(msg, state->flows[i]->size, "%d", i);
 
         prepare_packet_payload(pkts[i], msg, state->flows[i]->size);
         prepare_packet_offload(pkts[i], pit_hw, pit_etf);
+
+        free(msg);
     }
     return pkts;
 }

@@ -30,7 +30,4 @@ struct rte_ipv4_hdr* setup_ip_header(struct rte_mbuf* pkt, uint32_t src_ip,
 
 struct rte_udp_hdr* setup_udp_header(struct rte_mbuf* pkt, uint16_t src_port,
                                      uint16_t dst_port, size_t data_size);
-
-void setup_data_payload(struct rte_mbuf* pkt, const char* data, size_t data_size);
-
 #endif  // HEADER_H

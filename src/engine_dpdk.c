@@ -138,6 +138,11 @@ void prepare_packet_payload(void *pkt, const char *msg, size_t msg_size) {
     if (payload != NULL) {
         rte_memcpy(payload, msg, msg_size);
     }
+
+    // TODO: rte_pktmbuf_append automatically updates pkt_len.
+    // Update here to avoid duplicate calculation
+    mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr) + msg_size;
+    mbuf->data_len = mbuf->pkt_len;  // For single segment
 }
 
 void prepare_packet_header(void *pkt, int msg_size,
@@ -154,8 +159,6 @@ void prepare_packet_header(void *pkt, int msg_size,
     setup_ethernet_header(
         mbuf, &src_addr, &dst_addr, interface->vlan_enabled,
         interface->ip_enabled, interface->vlan, interface->priority);
-    mbuf->pkt_len = 0;
-    mbuf->pkt_len += sizeof(struct rte_ether_hdr);
 
     if (interface->ip_enabled) {
         uint32_t src_ip, dst_ip;
@@ -166,12 +169,11 @@ void prepare_packet_header(void *pkt, int msg_size,
         src_port = interface->port_src;
         dst_port = interface->port_dst;
         udp_hdr = setup_udp_header(mbuf, src_port, dst_port, msg_size);
-
-        mbuf->pkt_len += sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr);
     }
 
-    mbuf->pkt_len += msg_size;
+    mbuf->pkt_len = sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_udp_hdr) + msg_size;
     mbuf->data_len = mbuf->pkt_len;  // For single segment
+
     if (interface->ip_enabled && ip_hdr != NULL && udp_hdr != NULL) {
         ip_hdr->hdr_checksum = rte_ipv4_cksum(ip_hdr);
         udp_hdr->dgram_cksum = rte_ipv4_udptcp_cksum(ip_hdr, udp_hdr);
@@ -205,12 +207,12 @@ int sche_single(void *pkt, struct interface_config *interface, uint64_t txtime,
     /* Check if the header has been set up*/
     if (unlikely(mbuf->pkt_len == 0)) {
         prepare_packet_header(pkt, msg_size, interface);
-        printf("Prepare header in sche_single\n");
+        printf("[!] Prepare header in sche_single\n");
     }
 
     if (msg_size > 0) {
         prepare_packet_payload(pkt, msg, msg_size);
-        printf("Prepare payload in sche_single\n");
+        printf("[!] Prepare payload in sche_single\n");
     }
 
     *RTE_MBUF_DYNFIELD(pkt,

@@ -63,11 +63,3 @@ struct rte_udp_hdr *setup_udp_header(struct rte_mbuf *pkt, uint16_t src_port,
     udp_hdr->dgram_cksum = 0;  // This must be zero for UDP checksum
     return udp_hdr;
 }
-
-void setup_data_payload(struct rte_mbuf *pkt, const char *data,
-                        size_t data_size) {
-    char *payload = rte_pktmbuf_append(pkt, data_size);
-    if (payload != NULL) {
-        rte_memcpy(payload, data, data_size);
-    }
-}
