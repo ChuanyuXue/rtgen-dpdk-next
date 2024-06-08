@@ -256,6 +256,7 @@ int tx_loop(void *args) {
     int port_id = tx_args->port_id;
     struct flow_state *state = tx_args->state;
     struct schedule_state *schedule = tx_args->schedule_state;
+    struct statistic_core *stats = tx_args->stats;
     void **pkts = tx_args->pkts;
 
     if (pkts == NULL) {
@@ -268,9 +269,11 @@ int tx_loop(void *args) {
 
     int it_frame;
     int flow_id;
-    int count = 0;
     uint64_t txtime;
+    uint64_t hwtimestamp;
     struct flow *flow;
+    printf("Lcore id: %d: current_time: %lu\n", lcore_id, current_time);
+    printf("Number of frames: %ld\n", schedule->num_frames_per_cycle);
 
     while (current_time < base_time || (current_time - base_time) / ONE_SECOND_IN_NS < pit_runtime) {
         for (it_frame = 0; it_frame < schedule->num_frames_per_cycle; it_frame++) {
@@ -290,12 +293,19 @@ int tx_loop(void *args) {
             if (current_time < txtime - flow->delta) {
                 sleep(txtime - flow->delta - current_time);
             } else if (current_time > txtime - flow->delta + FUDGE_FACTOR) {
-                count++;
+                update_nums(stats, flow_id, 1, 0);
                 continue;
             }
 
             if (sche_single(pkts[flow_id], flow->net, txtime, NULL, 0) != 1) {
-                printf("[!] failed to send packet for %d-th flow\n", flow_id);
+                update_nums(stats, flow_id, 0, 1);
+            } else {
+                update_nums(stats, flow_id, 0, 0);
+
+                if (pit_hw) {
+                    get_tx_hardware_timestamp(port_id, &hwtimestamp);
+                    update_time_hw(stats, flow_id, hwtimestamp, txtime);
+                }
             }
         }
     }
@@ -311,8 +321,6 @@ int main(int argc, char *argv[]) {
         printf("[!] failed to initialize EAL\n");
     }
 
-    sleep(ONE_SECOND_IN_NS * 1);
-
     /*   Initialize the flows from the config file or command line arguments */
     struct flow_state *state = create_flow_state();
     if (pit_multi_flow == 0) {
@@ -325,15 +333,21 @@ int main(int argc, char *argv[]) {
     void *mbuf_pool = create_mbuf_pool();
     int lcore = 10;
     int port_id, queue_id;
-    int tx_queue_nums, rx_queue_nums = 0;
+    int tx_queue_nums = 0;
+    int rx_queue_nums = 0;
     struct dev_state *dev_state;
     struct queue_state *queue_state;
+    struct statistic_core **stats_list = malloc(NUM_TX_QUEUE * sizeof(struct statistic_core *));
+    if (stats_list == NULL) {
+        printf("[!]Memory allocation failed\n");
+    }
 
     for (int i = 0; i < state->num_flows; i++) {
         /* Configure port */
         port_id = state->flows[i]->net->port;
         dev_state = &dev_state_list[port_id];
-        queue_state = &dev_state->txq_state[state->flows[i]->net->queue];
+        queue_id = state->flows[i]->net->queue;
+        queue_state = &dev_state->txq_state[queue_id];
 
         if (dev_state->is_existed == 1 && dev_state->is_configured != 1) {
             configure_port(port_id);
@@ -341,22 +355,25 @@ int main(int argc, char *argv[]) {
 
             /* Config rx queue*/
             /* Idk why it triggers segmentation fault without this*/
-            configure_rx_queue(port_id, rx_queue_nums, mbuf_pool);
+            configure_rx_queue(port_id, SYNC_RX_QUEUE_ID, NUM_RX_SYNC_DESC, mbuf_pool);
             rx_queue_nums++;
         }
 
         /* Configure tx queue */
-        queue_id = state->flows[i]->net->queue;
         if (queue_state->is_existed == 1 && queue_state->is_configured != 1) {
-            configure_tx_queue(port_id, queue_id);
+            configure_tx_queue(port_id, queue_id, NUM_TX_DESC);
             queue_state->is_configured = 1;
             tx_queue_nums++;
         }
     }
 
     /* Configure queues for PTP client*/
-    configure_tx_queue(port_id, NUM_TX_QUEUE - 1);
-    tx_queue_nums++;
+    if (dev_state->txq_state[SYNC_TX_QUEUE_ID].is_configured != 1) {
+        configure_tx_queue(port_id, SYNC_TX_QUEUE_ID, NUM_TX_SYNC_DESC);
+        dev_state->txq_state[SYNC_TX_QUEUE_ID].is_existed = 1;
+        dev_state->txq_state[SYNC_TX_QUEUE_ID].is_configured = 1;
+        tx_queue_nums++;
+    }
 
     /* Start port*/
     printf("Starting ports\n");
@@ -364,10 +381,12 @@ int main(int argc, char *argv[]) {
     // TODO: Add error handling
     if (tx_queue_nums != NUM_TX_QUEUE) {
         printf("[Fatal !] not all tx queues are configured\n");
+        printf("Configured: %d - Expected: %d\n", tx_queue_nums, NUM_TX_QUEUE);
     }
 
     if (rx_queue_nums != NUM_RX_QUEUE) {
         printf("[Fatal !] not all rx queues are configured\n");
+        printf("Configured: %d - Expected: %d\n", rx_queue_nums, NUM_RX_QUEUE);
     }
 
     for (port_id = 0; port_id < MAX_AVAILABLE_PORTS; port_id++) {
@@ -390,7 +409,7 @@ int main(int argc, char *argv[]) {
     struct schedule_state *schedule = create_schedule_state(state, tx_queue_nums);
 
     /* Enable timesync */
-    // TODO: Enable sync when multi-core is ready
+    // TODO: Check why the synchronization is not working
     printf("Enabling synchronization\n");
     for (port_id = 0; port_id < MAX_AVAILABLE_PORTS; port_id++) {
         if (dev_state_list[port_id].is_configured == 1 && dev_state_list[port_id].is_synced != 1) {
@@ -403,6 +422,11 @@ int main(int argc, char *argv[]) {
     /*   Prepare packets */
     uint64_t base_time;
     uint64_t current_time;
+
+    /*   Wait for synchronization. //TODO - Change to event trigger*/
+    /*   It takes really long time to finish BCMA and other initializations*/
+    // printf("Waiting for synchronization\n");
+    // sleep_seconds(20);
 
     /*[TODO]: Consider multiple ports*/
     read_clock(pit_port, &current_time);
@@ -422,16 +446,35 @@ int main(int argc, char *argv[]) {
             printf("[!] no frames scheduled for queue %d\n", queue_id);
             continue;
         }
+
+        struct statistic_core *stats = init_statistics(state->num_flows, queue_id, queue_id);
+        stats_list[queue_id] = stats;
+
         struct tx_loop_args tx_args = {
             .port_id = pit_port,
             .queue_id = queue_id,
             .base_time = base_time,
             .state = state,
-            .schedule_state = schedule,
+            .schedule_state = &schedule[queue_id],
+            .stats = stats,
             .pkts = pkts,
         };
         printf("\nLcore id: %d from main\n", lcore);
         int ret = rte_eal_remote_launch(tx_loop, &tx_args, lcore++);
+    }
+
+    while (1) {
+        printf("Printing stats\n");
+        sleep(1000000000);
+        for (queue_id = 0; queue_id < tx_queue_nums; queue_id++) {
+            if (schedule[queue_id].num_frames_per_cycle == 0) {
+                continue;
+            }
+
+            struct statistic_core *stats = stats_list[queue_id];
+            printf("Printing stats for queue %d\n", queue_id);
+            print_stats(stats);
+        }
     }
 
     rte_eal_mp_wait_lcore();
