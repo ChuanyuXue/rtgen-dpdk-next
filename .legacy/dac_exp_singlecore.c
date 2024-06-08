@@ -5,7 +5,6 @@ Desc: description
 Created:  2024-01-02T19:20:45.839Z
 */
 
-
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_eal.h>
@@ -36,8 +35,8 @@ Created:  2024-01-02T19:20:45.839Z
 // #define DST_ETH_ADDR ((struct rte_ether_addr){{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}})
 #define SRC_IP RTE_IPV4(192, 168, 0, 96)
 #define DST_IP RTE_IPV4(192, 168, 0, 139)
-#define SRC_PORT 1234
-#define DST_PORT 1234
+#define SRC_PORT 12345
+#define DST_PORT 12345
 
 struct rte_mempool *create_mbuf_pool(void);
 int configure_port(void);
@@ -76,8 +75,7 @@ int configure_port(void) {
     // struct rte_eth_conf port_conf = {0};
     struct rte_eth_conf port_conf = {
         .txmode = {
-            .offloads = RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP
-            },
+            .offloads = RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP},
         // .link_speeds = RTE_ETH_LINK_SPEED_100M | RTE_ETH_LINK_SPEED_FIXED
     };
     int ret = rte_eth_dev_configure(0, 1, 4, &port_conf);
@@ -273,8 +271,6 @@ void tx_loop(int *num_missed_deadlines, int *num_failed, float *through_put, lon
             (*num_failed)++;
         }
         count++;
-
-
     }
     *through_put = (float)((NUM_PACKETS - *num_failed - *num_missed_deadlines) * 8 * pkt->pkt_len) / (float)(NUM_PACKETS * CYCLE) * 1000ULL;
 }
