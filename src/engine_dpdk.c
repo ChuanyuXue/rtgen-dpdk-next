@@ -12,7 +12,7 @@ struct dev_info dev_info_list[MAX_AVAILABLE_PORTS];
 struct dev_state dev_state_list[MAX_AVAILABLE_PORTS];
 
 int setup_EAL(char *progname) {
-    /* [TODO]: Pass DPDK configs from CLI*/
+    /* [TODO]: Pass DPDK configs from CLI*_SYNC*/
     char *argv[] = {progname};
     int ret = rte_eal_init(1, argv);
     if (ret < 0) {
@@ -37,6 +37,7 @@ int setup_EAL(char *progname) {
 
     /* [TODO]: Remove get timer hz from here*/
     pit_timer_hz = rte_get_timer_hz();
+    printf("PIT Timer Hz: %lu\n", pit_timer_hz);
     return 0;
 }
 
@@ -44,7 +45,7 @@ void *create_mbuf_pool(void) {
     return (void *)rte_pktmbuf_pool_create(
         "MBUF_POOL",               /* name */
         NUM_MBUF_ELEMENTS,         /* # elements */
-        0,                         /* cache size */
+        POOL_CATCH_SIZE,           /* cache size */
         0,                         /* application private area size */
         RTE_MBUF_DEFAULT_BUF_SIZE, /* data buffer size */
         rte_socket_id()            /* socket ID */
@@ -56,8 +57,10 @@ void configure_port(int port_id) {
     struct rte_eth_conf port_conf = {
         .txmode = {
             .offloads = RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP},
-        // .rxmode = {.offloads = RTE_ETH_RX_OFFLOAD_TIMESTAMP}
-    };
+        .rxmode = {.offloads = RTE_ETH_RX_OFFLOAD_TIMESTAMP}};
+
+    /* Force full Tx path in the driver, required for IEEE1588 */
+    port_conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
     int ret = rte_eth_dev_configure(port_id,
                                     NUM_RX_QUEUE, NUM_TX_QUEUE, &port_conf);
@@ -65,6 +68,13 @@ void configure_port(int port_id) {
         rte_exit(EXIT_FAILURE,
                  "Cannot configure device: err=%d, port=%d\n", ret, port_id);
     }
+
+    uint16_t nb_tx_desc = NUM_TX_SYNC_DESC;
+    uint16_t nb_rx_desc = NUM_RX_SYNC_DESC;
+    int retval = rte_eth_dev_adjust_nb_rx_tx_desc(port_id, &nb_rx_desc, &nb_tx_desc);
+
+    if (retval != 0)
+        rte_exit(EXIT_FAILURE, "Cannot adjust number of descriptors\n");
 }
 
 void start_port(int port_id) {
@@ -76,10 +86,14 @@ void start_port(int port_id) {
     }
 }
 
-void configure_tx_queue(int port_id, int queue_id) {
+void configure_tx_queue(int port_id, int queue_id, int num_tx_desc) {
+    struct rte_eth_dev_info dev_info;
+    rte_eth_dev_info_get(port_id, &dev_info);
+    struct rte_eth_txconf *tx_conf = &dev_info.default_txconf;
+
     int ret = rte_eth_tx_queue_setup(port_id, queue_id,
-                                     NUM_TX_DESC,
-                                     rte_eth_dev_socket_id(port_id), NULL);
+                                     num_tx_desc,
+                                     rte_eth_dev_socket_id(port_id), tx_conf);
     if (ret != 0) {
         rte_exit(EXIT_FAILURE,
                  "Cannot setup tx queue %d for port %d -- Error %d\n",
@@ -87,9 +101,9 @@ void configure_tx_queue(int port_id, int queue_id) {
     }
 }
 
-void configure_rx_queue(int port_id, int queue_id, void *mbuf_pool) {
+void configure_rx_queue(int port_id, int queue_id, int num_rx_desc, void *mbuf_pool) {
     struct rte_mempool *pool = (struct rte_mempool *)mbuf_pool;
-    int ret = rte_eth_rx_queue_setup(port_id, queue_id, NUM_RX_DESC,
+    int ret = rte_eth_rx_queue_setup(port_id, queue_id, num_rx_desc,
                                      rte_eth_dev_socket_id(port_id), NULL, pool);
     if (ret != 0) {
         rte_exit(EXIT_FAILURE,
@@ -151,6 +165,11 @@ void prepare_packet_header(void *pkt, int msg_size,
     struct rte_ipv4_hdr *ip_hdr;
     struct rte_udp_hdr *udp_hdr;
     struct rte_ether_addr src_addr, dst_addr;
+
+    /* Automatically assign mac src for interface */
+    if (interface->mac_src == DEFAULT_MAC_SRC) {
+        interface->mac_src = dev_info_list[interface->port].mac_addr;
+    }
 
     memcpy(&src_addr, mac_addr_from_string(interface->mac_src),
            sizeof(struct rte_ether_addr));
@@ -228,6 +247,24 @@ int sche_single(void *pkt, struct interface_config *interface, uint64_t txtime,
     return sent;
 }
 
+int get_tx_hardware_timestamp(int port_id, uint64_t *txtime) {
+    int count = 0;
+    struct timespec ts;
+
+    // TODO - Find what maximum count is appropriate
+    while (rte_eth_timesync_read_tx_timestamp(port_id, &ts) != 0 && count < 10000) {
+        count++;
+    }
+
+    if (count == 10000) {
+        *txtime = 0;  // TODO: Find a better way to handle this
+        return -1;
+    }
+
+    *txtime = ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+    return 0;
+}
+
 char *get_mac_addr(int port_id) {
     struct rte_ether_addr *rte_mac_addr = (struct rte_ether_addr *)malloc(
         sizeof(struct rte_ether_addr));
@@ -249,8 +286,13 @@ char *get_mac_addr(int port_id) {
 void sleep(uint64_t ns) {
     uint64_t cycles = ns * pit_timer_hz / 1000000000ULL;
     uint64_t start = rte_get_timer_cycles();
-    while (rte_get_timer_cycles() - start < cycles)
-        ;
+    while (rte_get_timer_cycles() - start < cycles);
+}
+
+void sleep_seconds(uint64_t seconds) {
+    uint64_t cycles = seconds * pit_timer_hz;
+    uint64_t start = rte_get_timer_cycles();
+    while (rte_get_timer_cycles() - start < cycles);
 }
 
 void read_clock(int port, uint64_t *time) {
