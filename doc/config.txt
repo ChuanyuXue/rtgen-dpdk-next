@@ -9,3 +9,17 @@ echo 1 | sudo tee /sys/bus/pci/rescan
 
 
 set args --multi-flow="../../config/flow_config.txt" --delta=1500000
+
+
+sudo systemctl stop systemd-timesyncd
+sudo systemctl stop ntp
+
+cd /home/ubuntu/tool
+rm *.ko
+rm *.o
+make -C /lib/modules/`uname -r`/build M=$PWD
+
+
+cd /home/ubuntu/tool;sudo mkdir /lib/modules/`uname -r`/kernel/drivers/net/igb/;sudo cp ./igb.ko /lib/modules/`uname -r`/kernel/drivers/net/igb/igb.ko;sudo depmod -a;sudo modprobe i2c_algo_bit;sudo modprobe igb
+
+ sudo ip addr add 192.168.0.139/24 dev enp1s0
