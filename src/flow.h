@@ -8,7 +8,10 @@ Created:  2024-01-14T19:09:14.003Z
 #ifndef SRC_FLOW_H_
 #define SRC_FLOW_H_
 
-#include "engine_dpdk.h"
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define MAX_NUM_FLOWS 128
 #define MAX_LINE_LENGTH 256

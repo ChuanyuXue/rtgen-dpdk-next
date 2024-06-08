@@ -53,7 +53,8 @@ struct interface_config *create_interface(int port,
 
     interface->port = port;
     interface->queue = queue;
-    interface->mac_src = dev_info_list[port].mac_addr;
+    // interface->mac_src = dev_info_list[port].mac_addr;
+    interface->mac_src = strdup(pit_mac_src);
     interface->mac_dst = strdup(mac_dst);
     interface->vlan_enabled = vlan_enabled;
     interface->vlan = vlan;
