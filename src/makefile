@@ -9,7 +9,7 @@ BUILDDIR = build
 $(shell mkdir -p $(BUILDDIR))
 
 # Define the executables
-talker: $(BUILDDIR)/talker.o $(BUILDDIR)/flow.o  $(BUILDDIR)/engine.o $(BUILDDIR)/sche.o $(BUILDDIR)/utility.o $(BUILDDIR)/header.o $(BUILDDIR)/sync.o
+talker: $(BUILDDIR)/talker.o $(BUILDDIR)/flow.o  $(BUILDDIR)/engine.o $(BUILDDIR)/sche.o $(BUILDDIR)/utility.o $(BUILDDIR)/header.o $(BUILDDIR)/sync.o $(BUILDDIR)/statistic.o
 	$(CC) -o $(BUILDDIR)/$@ $^ $(DPDK_LIBS) $(DEBUG)
 
 listener: $(BUILDDIR)/listener.o $(BUILDDIR)/flow.o  $(BUILDDIR)/engine.o $(BUILDDIR)/utility.o $(BUILDDIR)/header.o $(BUILDDIR)/sync.o
@@ -38,6 +38,9 @@ $(BUILDDIR)/listener.o: listener.c  flow.h
 	$(CC) -c -o $@ $<
 
 $(BUILDDIR)/utility.o: utility.c utility.h
+	$(CC) -c -o $@ $<
+
+$(BUILDDIR)/statistic.o: statistic.c statistic.h
 	$(CC) -c -o $@ $<
 
 # Define the clean target
