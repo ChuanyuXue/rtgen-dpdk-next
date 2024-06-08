@@ -118,7 +118,7 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data, struct rte_mempool *mbuf_p
     ptp_data->tstamp1.tv_nsec = ntohl(origin_tstamp->ns);
     ptp_data->tstamp1.tv_sec =
         ((uint64_t)ntohl(origin_tstamp->sec_lsb)) |
-        (((uint64_t)ntohs(origin_tstamp->sec_msb)) << 33);
+        (((uint64_t)ntohs(origin_tstamp->sec_msb)) << 32);
 
     if (ptp_data->seqID_FOLLOWUP == ptp_data->seqID_SYNC) {
         ret = rte_eth_macaddr_get(ptp_data->portid, &eth_addr);
@@ -183,7 +183,7 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data, struct rte_mempool *mbuf_p
 
         /* Transmit the packet. */
         /* By default using queue 0*/
-        rte_eth_tx_burst(ptp_data->portid, 0, &created_pkt, 1);
+        rte_eth_tx_burst(ptp_data->portid, txq_id, &created_pkt, 1);
 
         wait_us = 0;
         ptp_data->tstamp3.tv_nsec = 0;
@@ -255,7 +255,7 @@ parse_ptp_frames(uint16_t portid, struct rte_mbuf *m, int txq_id) {
                 break;
             case DELAY_RESP:
                 parse_drsp(&ptp_data);
-                print_ptp_time(ptp_data.current_ptp_port);
+                // print_ptp_time(ptp_data.current_ptp_port);
                 break;
             default:
                 break;
@@ -284,7 +284,6 @@ int sync_loop(void *args) {
     while (1) {
         nb_rx = rte_eth_rx_burst(port_id, rx_queue_id, &m, 1);
         if (likely(nb_rx == 0)) {
-            // rte_delay_us_sleep(1);
             continue;
         }
         if (m->ol_flags & RTE_MBUF_F_RX_IEEE1588_PTP)
