@@ -14,7 +14,11 @@ Created:  2024-01-14T19:47:57.283Z
 #include "flow.h"
 #include "ptpclient_dpdk.h"
 #include "sche.h"
+#include "statistic.h"
 #include "talker.h"
+
+#define SYNC_TX_QUEUE_ID NUM_TX_QUEUE - 1
+#define SYNC_RX_QUEUE_ID 0
 
 static struct option long_options[] = {
     {"port", optional_argument, 0, 'i'},
@@ -42,5 +46,17 @@ void usage(char *progname);
 int parser(int argc, char *argv[]);
 void parse_command_arguments(struct flow_state *state);
 void parse_config_file(struct flow_state *state, const char *config_path);
+
+struct tx_loop_args {
+    int port_id;
+    int queue_id;
+    uint64_t base_time;
+    struct flow_state *state;
+    struct schedule_state *schedule_state;
+    struct statistic_core *stats;
+    void **pkts;
+};
+
+int tx_loop(void *args);
 
 #endif

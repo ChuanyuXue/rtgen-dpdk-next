@@ -27,7 +27,10 @@ Created:  2024-01-14T19:09:29.323Z
 #define NUM_TX_QUEUE 2
 #define NUM_RX_QUEUE 1
 #define NUM_TX_DESC 32
-#define NUM_RX_DESC 256
+#define NUM_TX_SYNC_DESC 256
+#define NUM_RX_DESC 32
+#define NUM_RX_SYNC_DESC 256
+#define POOL_CATCH_SIZE 256
 
 extern uint64_t pit_timer_hz;
 
@@ -61,8 +64,8 @@ int setup_EAL(char *progname);
 void *create_mbuf_pool(void);
 void configure_port(int port_id);
 void start_port(int port_id);
-void configure_tx_queue(int port_id, int queue_id);
-void configure_rx_queue(int port_id, int queue_id, void *mbuf_pool);
+void configure_tx_queue(int port_id, int queue_id, int num_desc);
+void configure_rx_queue(int port_id, int queue_id, int num_desc, void *mbuf_pool);
 void check_offload_capabilities(int port_id);
 void enable_synchronization(int port_id);
 void *allocate_packet(void *mbuf_pool);
@@ -74,7 +77,9 @@ int sche_single(void *pkt, struct interface_config *dev_config,
                 uint64_t txtime,
                 char msg[], const int msg_size);
 void sleep(uint64_t ns);
+void sleep_seconds(uint64_t seconds);
 void read_clock(int port, uint64_t *time);
+int get_tx_hardware_timestamp(int port_id, uint64_t *txtime);
 char *get_mac_addr(int port_id);
 
 #endif

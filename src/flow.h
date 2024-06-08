@@ -5,18 +5,20 @@ Desc: description
 Created:  2024-01-14T19:09:14.003Z
 */
 
-
 #ifndef SRC_FLOW_H_
 #define SRC_FLOW_H_
 
-#include "engine_dpdk.h"
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define MAX_NUM_FLOWS 128
 #define MAX_LINE_LENGTH 256
 #define START_DELAY_FROM_NOW_IN_SEC 3
 
 #define ONE_SECOND_IN_NS 1000000000ULL
-#define FUDGE_FACTOR 1000000ULL
+#define FUDGE_FACTOR 1000000ULL /* Covers CPU delay in the paper */
 
 #define DEFAULT_MULTI_FLOW 0
 #define DEFAULT_PORT 0
@@ -27,7 +29,7 @@ Created:  2024-01-14T19:09:14.003Z
 #define DEFAULT_VLAN 0
 #define DEFAULT_PRIORITY 0
 #define DEFAULT_IP_ENABLED 0
-#define DEFAULT_IP_SRC ""
+#define DEFAULT_IP_SRC "192.168.0.96"
 #define DEFAULT_IP_DST ""
 #define DEFAULT_PORT_SRC 12345
 #define DEFAULT_PORT_DST 12345
@@ -35,7 +37,7 @@ Created:  2024-01-14T19:09:14.003Z
 #define DEFAULT_OFFSET 0
 #define DEFAULT_NS_OFFSET 0
 #define DEFAULT_PAYLOAD 256
-#define DEFAULT_TIME_DELTA 1000000
+#define DEFAULT_TIME_DELTA 1000000 /* Fetch time Delta in the paper*/
 #define DEFAULT_RUNTIME 9999999999
 
 #define DEFAULT_HW_FLAG 1
@@ -147,6 +149,7 @@ extern struct flow flows[MAX_NUM_FLOWS];
 extern int num_flows;
 
 void init_flow_timer(struct flow *flow, uint64_t base);
+void init_flowset_timer(struct flow_state *state, uint64_t base);
 void inc_flow_timer(struct flow *flow);
 struct flow_state *create_flow_state();
 void destroy_flow_state(struct flow_state *state);

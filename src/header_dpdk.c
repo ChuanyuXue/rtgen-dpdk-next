@@ -47,6 +47,7 @@ struct rte_ipv4_hdr *setup_ip_header(struct rte_mbuf *pkt, uint32_t src_ip,
     ip_hdr->fragment_offset = 0;
     ip_hdr->time_to_live = 64;
     ip_hdr->next_proto_id = IPPROTO_UDP;
+    ip_hdr->hdr_checksum = 0;  // This must be zero for IP checksum
     ip_hdr->src_addr = rte_cpu_to_be_32(src_ip);
     ip_hdr->dst_addr = rte_cpu_to_be_32(dst_ip);
     return ip_hdr;
@@ -59,13 +60,6 @@ struct rte_udp_hdr *setup_udp_header(struct rte_mbuf *pkt, uint16_t src_port,
     udp_hdr->src_port = rte_cpu_to_be_16(src_port);
     udp_hdr->dst_port = rte_cpu_to_be_16(dst_port);
     udp_hdr->dgram_len = rte_cpu_to_be_16(sizeof(struct rte_udp_hdr) + data_size);
+    udp_hdr->dgram_cksum = 0;  // This must be zero for UDP checksum
     return udp_hdr;
-}
-
-void setup_data_payload(struct rte_mbuf *pkt, const char *data,
-                        size_t data_size) {
-    char *payload = rte_pktmbuf_append(pkt, data_size);
-    if (payload != NULL) {
-        rte_memcpy(payload, data, data_size);
-    }
 }
