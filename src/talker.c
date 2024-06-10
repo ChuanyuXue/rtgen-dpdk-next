@@ -284,11 +284,11 @@ int tx_loop(void *args) {
             inc_flow_timer(flow);
             txtime = flow->sche_time;
 
-            printf("Lcore id: %d\n", lcore_id);
-            printf("Flow id: %d\n", flow_id);
-            printf("Port id: %d\n", port_id);
-            printf("Current time: %lu\n", current_time);
-            printf("Txtime: %lu\n", txtime);
+            // printf("Lcore id: %d\n", lcore_id);
+            // printf("Flow id: %d\n", flow_id);
+            // printf("Port id: %d\n", port_id);
+            // printf("Current time: %lu\n", current_time);
+            // printf("Txtime: %lu\n", txtime);
 
             if (current_time < txtime - flow->delta) {
                 sleep(txtime - flow->delta - current_time);
@@ -448,6 +448,10 @@ int main(int argc, char *argv[]) {
         }
 
         struct statistic_core *stats = init_statistics(state->num_flows, queue_id, queue_id);
+        for (int i = 0; i < state->num_flows; i++) {
+            stats->st[i].queue_id = state->flows[i]->net->queue;
+        }
+
         stats_list[queue_id] = stats;
 
         struct tx_loop_args tx_args = {
@@ -463,16 +467,17 @@ int main(int argc, char *argv[]) {
         int ret = rte_eal_remote_launch(tx_loop, &tx_args, lcore++);
     }
 
+    printf("Printing stats\n");
     while (1) {
-        printf("Printing stats\n");
         sleep(1000000000);
+        printf("\033[2J\033[1;1H");
         for (queue_id = 0; queue_id < tx_queue_nums; queue_id++) {
             if (schedule[queue_id].num_frames_per_cycle == 0) {
                 continue;
             }
 
             struct statistic_core *stats = stats_list[queue_id];
-            printf("Printing stats for queue %d\n", queue_id);
+            // printf("Printing stats for queue %d\n", queue_id);
             print_stats(stats);
         }
     }

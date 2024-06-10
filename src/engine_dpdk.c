@@ -215,7 +215,7 @@ void prepare_packet_offload(void *pkt, int txtime_enabled,
 
 int sche_single(void *pkt, struct interface_config *interface, uint64_t txtime,
                 char msg[], const int msg_size) {
-    printf("Schedule single \n");
+    // printf("Schedule single \n");
     fflush(stdout);
     struct rte_mbuf *mbuf = (struct rte_mbuf *)pkt;
     int port_id = interface->port;
