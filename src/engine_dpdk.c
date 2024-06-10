@@ -89,16 +89,32 @@ void start_port(int port_id) {
 void configure_tx_queue(int port_id, int queue_id, int num_tx_desc) {
     struct rte_eth_dev_info dev_info;
     rte_eth_dev_info_get(port_id, &dev_info);
-    struct rte_eth_txconf *tx_conf = &dev_info.default_txconf;
+    struct rte_eth_txconf tx_conf = {
+        .tx_thresh = {
+            .pthresh = 1,
+            .hthresh = 1,
+            .wthresh = 1,
+        },
+    };
 
     int ret = rte_eth_tx_queue_setup(port_id, queue_id,
                                      num_tx_desc,
-                                     rte_eth_dev_socket_id(port_id), tx_conf);
+                                     rte_eth_dev_socket_id(port_id), &tx_conf);
     if (ret != 0) {
         rte_exit(EXIT_FAILURE,
                  "Cannot setup tx queue %d for port %d -- Error %d\n",
                  queue_id, port_id, ret);
     }
+
+    // int *dev_offset_ptr = (int *)dev_info.default_txconf.reserved_ptrs[1];
+    // uint64_t *dev_flag_ptr = (uint64_t *)dev_info.default_txconf.reserved_ptrs[0];
+
+    // ret = rte_mbuf_dyn_tx_timestamp_register(dev_offset_ptr, dev_flag_ptr);
+    // if (ret != 0) {
+    //     rte_exit(EXIT_FAILURE,
+    //              "Cannot register tx timestamp for port %d -- Error %d\n",
+    //              port_id, ret);
+    // }
 }
 
 void configure_rx_queue(int port_id, int queue_id, int num_rx_desc, void *mbuf_pool) {
@@ -247,6 +263,7 @@ int sche_single(void *pkt, struct interface_config *interface, uint64_t txtime,
     return sent;
 }
 
+
 int get_tx_hardware_timestamp(int port_id, uint64_t *txtime) {
     int count = 0;
     struct timespec ts;
@@ -257,7 +274,7 @@ int get_tx_hardware_timestamp(int port_id, uint64_t *txtime) {
     }
 
     if (count == 10000) {
-        *txtime = 0;  // TODO: Find a better way to handle this
+        *txtime = 0;
         return -1;
     }
 
