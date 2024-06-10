@@ -3,7 +3,7 @@ CC = gcc
 DPDK_LIBS = $(shell pkg-config --libs libdpdk)
 DPDK_CFLAGS = $(shell pkg-config --cflags libdpdk)
 DEBUG = -g
-BUILDDIR = build
+BUILDDIR = ../build
 
 # Create the build directory if it doesn't exist
 $(shell mkdir -p $(BUILDDIR))
