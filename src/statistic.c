@@ -38,9 +38,18 @@ struct statistic_core* init_statistics(int num_flows, int core_id, int queue_id)
         stats->st[i].num_pkt_send = 0;
         stats->st[i].num_pkt_drop = 0;
         stats->st[i].num_pkt_misdl = 0;
-        stats->st[i].avg_jitter = 0;
-        stats->st[i].max_jitter = 0;
-        stats->st[i].delta = 0;
+        stats->st[i].jitter_hw = 0;
+        stats->st[i].avg_jitter_hw = 0;
+        stats->st[i].max_jitter_hw = 0;
+        stats->st[i].jitter_sw = 0;
+        stats->st[i].avg_jitter_sw = 0;
+        stats->st[i].max_jitter_sw = 0;
+        stats->st[i].delta_hw = 0;
+        stats->st[i].avg_delta_hw = 0;
+        stats->st[i].max_delta_hw = 0;
+        stats->st[i].delta_sw = 0;
+        stats->st[i].avg_delta_sw = 0;
+        stats->st[i].max_delta_sw = 0;
     }
 
     return stats;
@@ -79,17 +88,53 @@ void update_nums(struct statistic_core* stats, int flow_id, int missed_deadline,
     update_nums_st(stats, stats->num_flows, missed_deadline, send_failure);  // core level
 }
 
+void update_time_sw_st(struct statistic_core* stats, int flow_id, uint64_t swtime, uint64_t txtime) {
+    struct stat_st* flow_stats = &stats->st[flow_id];
+    uint64_t delta = abs(swtime - txtime);
+
+    flow_stats->delta_sw = delta;
+
+    flow_stats->avg_delta_sw = (flow_stats->avg_delta_sw * (flow_stats->num_pkt_send - 1) + delta) / flow_stats->num_pkt_send;
+
+    delta > flow_stats->max_delta_sw ? flow_stats->max_delta_sw = delta : 0;
+}
+
 /* This function has to be called after update_nums */
 void update_time_hw_st(struct statistic_core* stats, int flow_id, uint64_t hwtime, uint64_t txtime) {
     struct stat_st* flow_stats = &stats->st[flow_id];
-    uint64_t jitter = abs(hwtime - txtime);
+    uint64_t delta = abs(hwtime - txtime);
+
+    flow_stats->delta_hw = delta;
 
     // inc avg: avg_i = (avg_i-1 * size - 1 + new_i) / size
-    flow_stats->avg_jitter = (flow_stats->avg_jitter * (flow_stats->num_pkt_send - 1) + jitter) / flow_stats->num_pkt_send;
-    jitter > flow_stats->max_jitter ? flow_stats->max_jitter = jitter : 0;
+    flow_stats->avg_delta_hw = (flow_stats->avg_delta_hw * (flow_stats->num_pkt_send - 1) + delta) / flow_stats->num_pkt_send;
+    delta > flow_stats->max_delta_hw ? flow_stats->max_delta_hw = delta : 0;
+}
 
-    // printf("hwt %lu - txt %lu\n", hwtime, txtime);
-    // printf("jitter %lu - avg_jitter %lu - max_jitter %lu\n", jitter, flow_stats->avg_jitter, flow_stats->max_jitter);
+void update_jitter_sw_st(struct statistic_core* stats, int flow_id, uint64_t pre_txtime, uint64_t current_txtime, uint64_t period) {
+    struct stat_st* flow_stats = &stats->st[flow_id];
+    uint64_t jitter = abs(current_txtime - pre_txtime - period);
+
+    flow_stats->jitter_sw = jitter;
+
+    flow_stats->avg_jitter_sw = (flow_stats->avg_jitter_sw * (flow_stats->num_pkt_send - 1) + jitter) / flow_stats->num_pkt_send;
+
+    jitter > flow_stats->max_jitter_sw ? flow_stats->max_jitter_sw = jitter : 0;
+}
+
+void update_jitter_hw_st(struct statistic_core* stats, int flow_id, uint64_t pre_txtime, uint64_t current_txtime, uint64_t period) {
+    struct stat_st* flow_stats = &stats->st[flow_id];
+    uint64_t jitter = abs(current_txtime - pre_txtime - period);
+    flow_stats->jitter_hw = jitter;
+
+    flow_stats->avg_jitter_hw = (flow_stats->avg_jitter_hw * (flow_stats->num_pkt_send - 1) + jitter) / flow_stats->num_pkt_send;
+
+    jitter > flow_stats->max_jitter_hw ? flow_stats->max_jitter_hw = jitter : 0;
+}
+
+void update_time_sw(struct statistic_core* stats, int flow_id, uint64_t swtime, uint64_t txtime) {
+    update_time_sw_st(stats, flow_id, swtime, txtime);
+    update_time_sw_st(stats, stats->num_flows, swtime, txtime);  // core level
 }
 
 void update_time_hw(struct statistic_core* stats, int flow_id, uint64_t hwtime, uint64_t txtime) {
@@ -110,7 +155,10 @@ void print_stats(struct statistic_core* stats) {
         printf("Flow %d\n", flow_stats->flow_id);
         printf("total %lu - send %lu - drop %lu - misdl %lu\n", flow_stats->num_pkt_total, flow_stats->num_pkt_send, flow_stats->num_pkt_drop, flow_stats->num_pkt_misdl);
 
-        printf("avg_jitter: %lu\n", flow_stats->avg_jitter);
-        printf("max_jitter: %lu\n", flow_stats->max_jitter);
+        printf("delta(hw): %lu - avg: %lu - max: %lu\n", flow_stats->delta_hw, flow_stats->avg_delta_hw, flow_stats->max_delta_hw);
+        printf("delta(sw): %lu - avg: %lu - max: %lu\n", flow_stats->delta_sw, flow_stats->avg_delta_sw, flow_stats->max_delta_sw);
+
+        printf("jitter(hw): %lu - avg: %lu - max: %lu\n", flow_stats->jitter_hw, flow_stats->avg_jitter_hw, flow_stats->max_jitter_hw);
+        printf("jitter(sw): %lu - avg: %lu - max: %lu\n", flow_stats->jitter_sw, flow_stats->avg_jitter_sw, flow_stats->max_jitter_sw);
     }
 }

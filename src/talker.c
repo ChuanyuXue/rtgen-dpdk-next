@@ -265,12 +265,22 @@ int tx_loop(void *args) {
     }
 
     uint64_t current_time;
+    uint64_t prev_time[state->num_flows];
+    for (int i = 0; i < state->num_flows; i++) {
+        prev_time[i] = 0;
+    }
     read_clock(port_id, &current_time);
 
     int it_frame;
-    int flow_id;
-    uint64_t txtime;
+    int flow_id, flow_id_prev;
+    uint64_t txtime = current_time;
     uint64_t hwtimestamp;
+    uint64_t prev_hwtime[state->num_flows];
+    for (int i = 0; i < state->num_flows; i++) {
+        prev_hwtime[i] = 0;
+    }
+    int ret;
+
     struct flow *flow;
     printf("Lcore id: %d: current_time: %lu\n", lcore_id, current_time);
     printf("Number of frames: %ld\n", schedule->num_frames_per_cycle);
@@ -278,6 +288,24 @@ int tx_loop(void *args) {
     while (current_time < base_time || (current_time - base_time) / ONE_SECOND_IN_NS < pit_runtime) {
         for (it_frame = 0; it_frame < schedule->num_frames_per_cycle; it_frame++) {
             read_clock(port_id, &current_time);
+
+            // current_time estimates the finish time of the last frame
+            if (it_frame == 0) {
+                flow_id_prev = schedule->order[schedule->num_frames_per_cycle - 1];
+            } else {
+                flow_id_prev = schedule->order[it_frame - 1];
+            }
+
+            // Only update the time if the flow has been sent
+            if (stats->st[flow_id_prev].num_pkt_total != 0) {
+                update_time_sw(stats, flow_id_prev, current_time, txtime);  // NOTE: Last txtime
+            }
+
+            if (prev_time[flow_id_prev] != 0) {
+                update_jitter_sw_st(stats, flow_id_prev, prev_time[flow_id_prev], current_time, flow->period);
+            }
+            prev_time[flow_id_prev] = current_time;
+
             flow_id = schedule->order[it_frame];
             flow = state->flows[flow_id];
 
@@ -294,17 +322,23 @@ int tx_loop(void *args) {
                 sleep(txtime - flow->delta - current_time);
             } else if (current_time > txtime - flow->delta + FUDGE_FACTOR) {
                 update_nums(stats, flow_id, 1, 0);
+                prev_hwtime[flow_id] = 0;
                 continue;
             }
 
             if (sche_single(pkts[flow_id], flow->net, txtime, NULL, 0) != 1) {
                 update_nums(stats, flow_id, 0, 1);
+                prev_hwtime[flow_id] = 0;
             } else {
                 update_nums(stats, flow_id, 0, 0);
-
-                if (pit_hw) {
-                    get_tx_hardware_timestamp(port_id, &hwtimestamp);
+                if (pit_hw && get_tx_hardware_timestamp(port_id, &hwtimestamp) == 0) {
                     update_time_hw(stats, flow_id, hwtimestamp, txtime);
+                    printf("txtime: %lu\n", txtime);
+                    printf("hardware timestamp: %lu\n", hwtimestamp);
+                    if (prev_hwtime[flow_id] != 0) {
+                        update_jitter_hw_st(stats, flow_id, prev_hwtime[flow_id], hwtimestamp, flow->period);
+                    }
+                    prev_hwtime[flow_id] = hwtimestamp;
                 }
             }
         }
@@ -467,20 +501,20 @@ int main(int argc, char *argv[]) {
         int ret = rte_eal_remote_launch(tx_loop, &tx_args, lcore++);
     }
 
-    printf("Printing stats\n");
-    while (1) {
-        sleep(1000000000);
-        printf("\033[2J\033[1;1H");
-        for (queue_id = 0; queue_id < tx_queue_nums; queue_id++) {
-            if (schedule[queue_id].num_frames_per_cycle == 0) {
-                continue;
-            }
+    // printf("Printing stats\n");
+    // while (1) {
+    //     sleep(1000000000);
+    //     printf("\033[2J\033[1;1H");
+    //     for (queue_id = 0; queue_id < tx_queue_nums; queue_id++) {
+    //         if (schedule[queue_id].num_frames_per_cycle == 0) {
+    //             continue;
+    //         }
 
-            struct statistic_core *stats = stats_list[queue_id];
-            // printf("Printing stats for queue %d\n", queue_id);
-            print_stats(stats);
-        }
-    }
+    //         struct statistic_core *stats = stats_list[queue_id];
+    //         // printf("Printing stats for queue %d\n", queue_id);
+    //         print_stats(stats);
+    //     }
+    // }
 
     rte_eal_mp_wait_lcore();
     return 0;

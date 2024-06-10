@@ -27,12 +27,24 @@ struct stat_st {
     uint64_t num_pkt_misdl;
 
     /* Jitter: |hardware_timestamp - expected_time|*/
-    uint64_t avg_jitter;
-    uint64_t max_jitter;
+    uint64_t jitter_hw;
+    uint64_t avg_jitter_hw;
+    uint64_t max_jitter_hw;
+
+    /* |software_timestamp - expected_time| */
+    uint64_t jitter_sw;
+    uint64_t avg_jitter_sw;
+    uint64_t max_jitter_sw;
 
     /* Delta between wake_time <-> scheduled time*/
     // TODO: implement
-    uint64_t delta;
+    uint64_t delta_sw;
+    uint64_t avg_delta_sw;
+    uint64_t max_delta_sw;
+
+    uint64_t delta_hw;
+    uint64_t avg_delta_hw;
+    uint64_t max_delta_hw;
 };
 
 /* Current status for each core */
@@ -59,6 +71,12 @@ void update_nums_st(struct statistic_core* stats, int flow_id, int missed_deadli
 
 void update_time_hw(struct statistic_core* stats, int flow_id, uint64_t hwtime, uint64_t txtime);
 void update_time_hw_st(struct statistic_core* stats, int flow_id, uint64_t hwtime, uint64_t txtime);
+
+void update_time_sw(struct statistic_core* stats, int flow_id, uint64_t swtime, uint64_t txtime);
+void update_time_sw_st(struct statistic_core* stats, int flow_id, uint64_t swtime, uint64_t txtime);
+
+void update_jitter_sw_st(struct statistic_core* stats, int flow_id, uint64_t pre_txtime, uint64_t current_txtime, uint64_t period);
+void update_jitter_hw_st(struct statistic_core* stats, int flow_id, uint64_t pre_txtime, uint64_t current_txtime, uint64_t period);
 
 void print_stats(struct statistic_core* stats);
 
