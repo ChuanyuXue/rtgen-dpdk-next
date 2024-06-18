@@ -219,7 +219,15 @@ void prepare_packet_offload(void *pkt, int txtime_enabled,
                             int timestamp_enabled) {
     struct rte_mbuf *mbuf = (struct rte_mbuf *)pkt;
     mbuf->ol_flags = 0;
-    if (timestamp_enabled) {
+
+    // 0 0 -> 0
+    // 1 0 -> TMST
+    // 0 1 -> both
+    // 1 1 -> both
+
+    if (txtime_enabled) {
+        mbuf->ol_flags = RTE_MBUF_F_TX_IEEE1588_TMST | 1ULL << rte_mbuf_dynflag_lookup(RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL);
+    } else if (timestamp_enabled) {
         mbuf->ol_flags = RTE_MBUF_F_TX_IEEE1588_TMST;
     }
 
