@@ -81,5 +81,6 @@ void sleep_seconds(uint64_t seconds);
 void read_clock(int port, uint64_t *time);
 int get_tx_hardware_timestamp(int port_id, uint64_t *txtime);
 char *get_mac_addr(int port_id);
+void cleanup_dpdk(int port_id, void *mbuf_pool);
 
 #endif

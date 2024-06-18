@@ -332,3 +332,12 @@ void read_clock(int port, uint64_t *time) {
                  "Cannot read clock of port %d -- Error %d\n", port, ret);
     }
 }
+
+void cleanup_dpdk(int port_id, void *mbuf_pool) {
+    if (rte_eth_dev_stop(port_id)) {
+        rte_exit(EXIT_FAILURE, "Cannot stop port %d\n", port_id);
+    }
+    struct rte_mempool *pool = (struct rte_mempool *)mbuf_pool;
+    rte_mempool_free(pool);
+    rte_eal_cleanup();
+}
