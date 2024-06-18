@@ -277,11 +277,11 @@ int get_tx_hardware_timestamp(int port_id, uint64_t *txtime) {
     struct timespec ts;
 
     // TODO - Find what maximum count is appropriate
-    while (rte_eth_timesync_read_tx_timestamp(port_id, &ts) != 0 && count < 10000) {
+    while (rte_eth_timesync_read_tx_timestamp(port_id, &ts) != 0 && count < HW_TIMESTAMP_TRY_TIMES) {
         count++;
     }
 
-    if (count == 10000) {
+    if (count == HW_TIMESTAMP_TRY_TIMES) {
         *txtime = 0;
         return -1;
     }

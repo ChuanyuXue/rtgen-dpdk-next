@@ -32,6 +32,8 @@ Created:  2024-01-14T19:09:29.323Z
 #define NUM_RX_SYNC_DESC 256
 #define POOL_CATCH_SIZE 256
 
+#define HW_TIMESTAMP_TRY_TIMES 10000
+
 extern uint64_t pit_timer_hz;
 
 struct dev_info {
@@ -77,7 +79,7 @@ int sche_single(void *pkt, struct interface_config *dev_config,
                 uint64_t txtime,
                 char msg[], const int msg_size);
 void sleep(uint64_t ns);
-void sleep_seconds(uint64_t seconds);
+// void sleep_seconds(uint64_t seconds);
 void read_clock(int port, uint64_t *time);
 int get_tx_hardware_timestamp(int port_id, uint64_t *txtime);
 char *get_mac_addr(int port_id);
