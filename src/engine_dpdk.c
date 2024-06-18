@@ -53,11 +53,11 @@ void *create_mbuf_pool(void) {
 }
 
 void configure_port(int port_id) {
-    // struct rte_eth_conf port_conf = {0};
     struct rte_eth_conf port_conf = {
         .txmode = {
             .offloads = RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP},
-        .rxmode = {.offloads = RTE_ETH_RX_OFFLOAD_TIMESTAMP}};
+        .rxmode = {.offloads = RTE_ETH_RX_OFFLOAD_TIMESTAMP}
+    };
 
     /* Force full Tx path in the driver, required for IEEE1588 */
     port_conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
@@ -74,7 +74,7 @@ void configure_port(int port_id) {
     int retval = rte_eth_dev_adjust_nb_rx_tx_desc(port_id, &nb_rx_desc, &nb_tx_desc);
 
     if (retval != 0)
-        rte_exit(EXIT_FAILURE, "Cannot adjust number of descriptors\n");
+        rte_exit(EXIT_FAILURE, "Invalid descriptor numbers for device\n");
 }
 
 void start_port(int port_id) {
@@ -105,16 +105,6 @@ void configure_tx_queue(int port_id, int queue_id, int num_tx_desc) {
                  "Cannot setup tx queue %d for port %d -- Error %d\n",
                  queue_id, port_id, ret);
     }
-
-    // int *dev_offset_ptr = (int *)dev_info.default_txconf.reserved_ptrs[1];
-    // uint64_t *dev_flag_ptr = (uint64_t *)dev_info.default_txconf.reserved_ptrs[0];
-
-    // ret = rte_mbuf_dyn_tx_timestamp_register(dev_offset_ptr, dev_flag_ptr);
-    // if (ret != 0) {
-    //     rte_exit(EXIT_FAILURE,
-    //              "Cannot register tx timestamp for port %d -- Error %d\n",
-    //              port_id, ret);
-    // }
 }
 
 void configure_rx_queue(int port_id, int queue_id, int num_rx_desc, void *mbuf_pool) {
@@ -144,7 +134,7 @@ void enable_synchronization(int port_id) {
                  "Cannot enable timesync for port %d -- Error %d\n", 0, ret);
     }
 
-    /* Idk why we need promiscuous model for synchronization. This is copied from the official ptp-client example*/
+    /* NOTE - Idk why we need promiscuous model for synchronization. This is copied from the official ptp-client example*/
     ret = rte_eth_promiscuous_enable(port_id);
     if (ret != 0) {
         rte_exit(EXIT_FAILURE,
@@ -230,17 +220,12 @@ void prepare_packet_offload(void *pkt, int txtime_enabled,
     } else if (timestamp_enabled) {
         mbuf->ol_flags = RTE_MBUF_F_TX_IEEE1588_TMST;
     }
-
-    if (txtime_enabled) {
-        mbuf->ol_flags |= 1ULL << rte_mbuf_dynflag_lookup(
-                              RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL);
-    }
 }
 
 int sche_single(void *pkt, struct interface_config *interface, uint64_t txtime,
                 char msg[], const int msg_size) {
     // printf("Schedule single \n");
-    fflush(stdout);
+    // fflush(stdout);
     struct rte_mbuf *mbuf = (struct rte_mbuf *)pkt;
     int port_id = interface->port;
     int queue_id = interface->queue;
@@ -270,7 +255,6 @@ int sche_single(void *pkt, struct interface_config *interface, uint64_t txtime,
 
     return sent;
 }
-
 
 int get_tx_hardware_timestamp(int port_id, uint64_t *txtime) {
     int count = 0;
@@ -309,16 +293,24 @@ char *get_mac_addr(int port_id) {
 }
 
 void sleep(uint64_t ns) {
-    uint64_t cycles = ns * pit_timer_hz / 1000000000ULL;
     uint64_t start = rte_get_timer_cycles();
+    uint64_t cycles = 0;
+
+    while (ns >= ONE_SECOND_IN_NS) {
+        cycles += pit_timer_hz;
+        ns -= ONE_SECOND_IN_NS;
+    }
+
+    cycles += ns * pit_timer_hz / ONE_SECOND_IN_NS;
     while (rte_get_timer_cycles() - start < cycles);
 }
 
-void sleep_seconds(uint64_t seconds) {
-    uint64_t cycles = seconds * pit_timer_hz;
-    uint64_t start = rte_get_timer_cycles();
-    while (rte_get_timer_cycles() - start < cycles);
-}
+// /* Avoid overflow when sleep longtime */
+// void sleep_seconds(uint64_t seconds) {
+//     uint64_t cycles = seconds * pit_timer_hz;
+//     uint64_t start = rte_get_timer_cycles();
+//     while (rte_get_timer_cycles() - start < cycles);
+// }
 
 void read_clock(int port, uint64_t *time) {
     /* Disable warning info*/

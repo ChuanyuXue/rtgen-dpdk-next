@@ -326,6 +326,9 @@ int tx_loop(void *args) {
                 continue;
             }
 
+            read_clock(port_id, &current_time);
+            printf("current time before tx: %lu\n", current_time);
+
             if (sche_single(pkts[flow_id], flow->net, txtime, NULL, 0) != 1) {
                 update_nums(stats, flow_id, 0, 1);
                 prev_hwtime[flow_id] = 0;
@@ -365,7 +368,7 @@ int main(int argc, char *argv[]) {
 
     /*   Configure the port and queue for each flow */
     void *mbuf_pool = create_mbuf_pool();
-    int lcore = 10;
+    int lcore = 9;
     int port_id, queue_id;
     int tx_queue_nums = 0;
     int rx_queue_nums = 0;
@@ -387,8 +390,10 @@ int main(int argc, char *argv[]) {
             configure_port(port_id);
             dev_state->is_configured = 1;
 
-            /* Config rx queue*/
-            /* Idk why it triggers segmentation fault without this*/
+            /* Config rx queue
+            - RX queue must be configured before TX queue (idk why)
+            - Put here as only one RX queue needed
+            */
             configure_rx_queue(port_id, SYNC_RX_QUEUE_ID, NUM_RX_SYNC_DESC, mbuf_pool);
             rx_queue_nums++;
         }
@@ -459,8 +464,9 @@ int main(int argc, char *argv[]) {
 
     /*   Wait for synchronization. //TODO - Change to event trigger*/
     /*   It takes really long time to finish BCMA and other initializations*/
-    // printf("Waiting for synchronization\n");
-    // sleep_seconds(20);
+    printf("Waiting for synchronization\n");
+    // sleep_seconds(5);
+    sleep(5 * ONE_SECOND_IN_NS);
 
     /*[TODO]: Consider multiple ports*/
     read_clock(pit_port, &current_time);
@@ -517,5 +523,6 @@ int main(int argc, char *argv[]) {
     // }
 
     rte_eal_mp_wait_lcore();
+    cleanup_dpdk(pit_port, mbuf_pool);
     return 0;
 }
