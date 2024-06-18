@@ -53,14 +53,23 @@ void *create_mbuf_pool(void) {
 }
 
 void configure_port(int port_id) {
+    // Check if Offload capabilities are supported
+    struct rte_eth_dev_info dev_info;
+    rte_eth_dev_info_get(port_id, &dev_info);
+
     struct rte_eth_conf port_conf = {
         .txmode = {
             .offloads = RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP},
-        .rxmode = {.offloads = RTE_ETH_RX_OFFLOAD_TIMESTAMP}
     };
 
-    /* Force full Tx path in the driver, required for IEEE1588 */
-    port_conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+    /* This function is used in official ptp-client example */
+    if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MULTI_SEGS) {
+        port_conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+    }
+
+    if (dev_info.rx_offload_capa & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+        port_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
+    }
 
     int ret = rte_eth_dev_configure(port_id,
                                     NUM_RX_QUEUE, NUM_TX_QUEUE, &port_conf);
