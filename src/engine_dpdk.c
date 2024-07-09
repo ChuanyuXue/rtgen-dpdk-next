@@ -33,6 +33,9 @@ int setup_EAL(char *progname) {
         for (int i = 0; i < dev_info_list[port_id].num_txq; i++) {
             dev_state_list[port_id].txq_state[i].is_existed = 1;
         }
+        for (int i = 0; i < dev_info_list[port_id].num_rxq; i++) {
+            dev_state_list[port_id].rxq_state[i].is_existed = 1;
+        }
     }
 
     /* [TODO]: Remove get timer hz from here*/
@@ -118,8 +121,16 @@ void configure_tx_queue(int port_id, int queue_id, int num_tx_desc) {
 
 void configure_rx_queue(int port_id, int queue_id, int num_rx_desc, void *mbuf_pool) {
     struct rte_mempool *pool = (struct rte_mempool *)mbuf_pool;
+    struct rte_eth_rxconf rx_conf = {
+        .rx_thresh = {
+            .pthresh = 1,
+            .hthresh = 1,
+            .wthresh = 1,
+        },
+    };
+
     int ret = rte_eth_rx_queue_setup(port_id, queue_id, num_rx_desc,
-                                     rte_eth_dev_socket_id(port_id), NULL, pool);
+                                     rte_eth_dev_socket_id(port_id), &rx_conf, pool);
     if (ret != 0) {
         rte_exit(EXIT_FAILURE,
                  "Cannot setup rx queue %d for port %d -- Error %d\n",
@@ -159,6 +170,12 @@ void *allocate_packet(void *mbuf_pool) {
         rte_exit(EXIT_FAILURE, "Cannot allocate packet\n");
     }
     return pkt;
+}
+
+int free_packet(void *pkt) {
+    struct rte_mbuf *mbuf = (struct rte_mbuf *)pkt;
+    rte_pktmbuf_free(mbuf);
+    return 0;
 }
 
 void prepare_packet_payload(void *pkt, const char *msg, size_t msg_size) {
@@ -265,6 +282,25 @@ int sche_single(void *pkt, struct interface_config *interface, uint64_t txtime,
     return sent;
 }
 
+int recv_single(void *pkt, struct interface_config *interface, uint64_t *txtime, char msg[], int *flag) {
+    struct rte_mbuf *mbuf = (struct rte_mbuf *)pkt;
+
+    int port_id = interface->port;
+    int queue_id = interface->queue;
+
+    int num_recv = rte_eth_rx_burst(port_id, queue_id, &mbuf, 1);
+
+    if (num_recv > 0 && mbuf->ol_flags & RTE_MBUF_F_RX_IEEE1588_PTP) {
+        printf("PTP packet\n");
+        *flag = mbuf->timesync;
+    } else {
+        *flag = -1;
+        // *flag = 0;
+    }
+
+    return num_recv;
+}
+
 int get_tx_hardware_timestamp(int port_id, uint64_t *txtime) {
     int count = 0;
     struct timespec ts;
@@ -280,6 +316,23 @@ int get_tx_hardware_timestamp(int port_id, uint64_t *txtime) {
     }
 
     *txtime = ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+    return 0;
+}
+
+int get_rx_hardware_timestamp(int port_id, uint64_t *rx_time, uint32_t flags) {
+    int count = 0;
+    struct timespec ts;
+
+    while (rte_eth_timesync_read_rx_timestamp(port_id, &ts, flags) != 0 && count < HW_TIMESTAMP_TRY_TIMES) {
+        count++;
+    }
+
+    if (count == HW_TIMESTAMP_TRY_TIMES) {
+        *rx_time = 0;
+        return -1;
+    }
+
+    *rx_time = ts.tv_sec * 1000000000ULL + ts.tv_nsec;
     return 0;
 }
 

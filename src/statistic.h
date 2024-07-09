@@ -26,17 +26,16 @@ struct stat_st {
     uint64_t num_pkt_drop;
     uint64_t num_pkt_misdl;
 
-    /* Jitter: |hardware_timestamp - expected_time|*/
+    /* Jitter: |current sending time - previous sending time - period */
     uint64_t jitter_hw;
     uint64_t avg_jitter_hw;
     uint64_t max_jitter_hw;
 
-    /* |software_timestamp - expected_time| */
     uint64_t jitter_sw;
     uint64_t avg_jitter_sw;
     uint64_t max_jitter_sw;
 
-    /* Delta between wake_time <-> scheduled time*/
+    /* Delta: |sending time - scheduled time| */
     // TODO: implement
     uint64_t delta_sw;
     uint64_t avg_delta_sw;

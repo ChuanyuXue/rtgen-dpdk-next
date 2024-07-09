@@ -11,6 +11,7 @@
         "talker.h": "c",
         "utility.h": "c",
         "statistic.h": "c",
-        "flow.h": "c"
+        "flow.h": "c",
+        "getopt.h": "c"
     }
 }

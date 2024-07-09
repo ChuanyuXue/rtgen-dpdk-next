@@ -12,7 +12,7 @@ $(shell mkdir -p $(BUILDDIR))
 talker: $(BUILDDIR)/talker.o $(BUILDDIR)/flow.o  $(BUILDDIR)/engine.o $(BUILDDIR)/sche.o $(BUILDDIR)/utility.o $(BUILDDIR)/header.o $(BUILDDIR)/sync.o $(BUILDDIR)/statistic.o
 	$(CC) -o $(BUILDDIR)/$@ $^ $(DPDK_LIBS) $(DEBUG)
 
-listener: $(BUILDDIR)/listener.o $(BUILDDIR)/flow.o  $(BUILDDIR)/engine.o $(BUILDDIR)/utility.o $(BUILDDIR)/header.o $(BUILDDIR)/sync.o
+listener: $(BUILDDIR)/listener.o $(BUILDDIR)/flow.o  $(BUILDDIR)/engine.o $(BUILDDIR)/utility.o $(BUILDDIR)/header.o $(BUILDDIR)/sync.o $(BUILDDIR)/statistic.o
 	$(CC)  -o $(BUILDDIR)/$@ $^ $(DPDK_LIBS) $(DEBUG)
 
 # Define the object files
