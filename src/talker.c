@@ -353,12 +353,12 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    /*   Set up EAL*/
+    /* Set up EAL */
     if (setup_EAL(argv[0]) < 0) {
         printf("[!] failed to initialize EAL\n");
     }
 
-    /*   Initialize the flows from the config file or command line arguments */
+    /* Initialize the flows from the config file or command line arguments */
     struct flow_state *state = create_flow_state();
     if (pit_multi_flow == 0) {
         parse_command_arguments(state);
@@ -366,7 +366,7 @@ int main(int argc, char *argv[]) {
         parse_config_file(state, pit_config_path);
     }
 
-    /*   Configure the port and queue for each flow */
+    /* Configure the port and queue */
     void *mbuf_pool = create_mbuf_pool();
     int lcore = 9;
     int port_id, queue_id;

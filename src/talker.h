@@ -15,7 +15,6 @@ Created:  2024-01-14T19:47:57.283Z
 #include "ptpclient_dpdk.h"
 #include "sche.h"
 #include "statistic.h"
-#include "talker.h"
 
 #define SYNC_TX_QUEUE_ID NUM_TX_QUEUE - 1
 #define SYNC_RX_QUEUE_ID 0

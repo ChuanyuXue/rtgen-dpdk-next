@@ -144,8 +144,6 @@ void update_time_hw(struct statistic_core* stats, int flow_id, uint64_t hwtime, 
 }
 
 void print_stats(struct statistic_core* stats) {
-    // NOTE - Copied from DPDK ptpclient
-
     printf("Core %d\n", stats->core_id);
     for (int i = 0; i < stats->num_flows; i++) {
         struct stat_st* flow_stats = &stats->st[i];
