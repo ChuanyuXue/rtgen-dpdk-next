@@ -1,18 +1,12 @@
 #include "listener.h"
 
-static char *interface = "eth0";
-static int port = 1998;
-char address[INET_ADDRSTRLEN];
-
 void usage(char *progname) {
     fprintf(stderr,
             "\n"
             "usage: %s [options]\n"
             "\n"
-            " -p  [int]      local port number\n"
-            " -i  [str]      network interface\n"
-            " -r             disable relay mode\n"
-            " -w             disable Hardware Timestamping\n"
+            " -i, --port     [int]      port ID\n"
+            " -w, --no-stamp            disable Hardware Timestamping\n"
             " -h             prints this message and exits\n"
             "\n",
             progname);
@@ -20,18 +14,20 @@ void usage(char *progname) {
 
 int parser(int argc, char *argv[]) {
     int c;
+    int option_index = 0;
     char *progname = strrchr(argv[0], '/');
     progname = progname ? 1 + progname : argv[0];
-    while (EOF != (c = getopt(argc, argv, "p:i:rwhv"))) {
+
+    while (true) {
+        if (c == -1) {
+            break;
+        }
+
+        c = getopt_long(argc, argv, "i:wh", long_options, &option_index);
+
         switch (c) {
-            case 'p':
-                port = atoi(optarg);
-                break;
             case 'i':
-                interface = optarg;
-                break;
-            case 'r':
-                pit_relay = 0;
+                pit_port = atoi(optarg);
                 break;
             case 'w':
                 pit_hw = 0;
@@ -39,70 +35,97 @@ int parser(int argc, char *argv[]) {
             case 'h':
                 usage(progname);
                 return -1;
-            case 'v':
-                pit_loopback = 0;
-                break;
             case '?':
-                die("[!] invalid arguments");
+                printf("[!] invalid arguments");
                 usage(progname);
                 return -1;
         }
     }
+
     return 0;
 }
 
+int rx_loop(void *args) {
+    struct rx_loop_args *rx_args = (struct rx_loop_args *)args;
+    int lcore_id = rte_lcore_id();
+    int queue_id = rx_args->queue_id;
+    int port_id = rx_args->port_id;
+    void **pkts = rx_args->pkts;
+    void *mbuf_pool = rx_args->mbuf_pool;
+
+    uint64_t recv_time;
+    uint64_t current_time;
+
+    int flag = 0;
+
+    read_clock(port_id, &current_time);
+
+    /* Only port_id and queue_id used */
+    struct interface_config *interface = create_interface(port_id, queue_id, pit_mac_src, 0, 0, 0, 0, pit_ip_dst, 0, 0);
+    char msg[1024];
+
+    while (1) {
+        // void *pkt = allocate_packet(mbuf_pool);
+
+        if (recv_single(pkts[0], interface, &recv_time, msg, &flag) == 1) {
+            read_clock(port_id, &current_time);
+            printf("SW   TIMESTAMP %lld.%09lld\n", current_time / ONE_SECOND_IN_NS, current_time % ONE_SECOND_IN_NS);
+            printf("pit_hw %d, flag %d\n", pit_hw, flag);
+            if (pit_hw && flag >= 0 && get_rx_hardware_timestamp(port_id, &recv_time, flag) == 0) {
+                printf("HW   TIMESTAMP %lld.%09lld\n", recv_time / ONE_SECOND_IN_NS, recv_time % ONE_SECOND_IN_NS);
+            }
+
+            // free_packet(pkt);
+        }
+    }
+}
+
 int main(int argc, char *argv[]) {
-    // Get command line arguments
+    /* Get command line arguments */
     if (parser(argc, argv) == -1) {
         return 0;
     }
 
-    int fd_in = setup_receiver(port, interface);
-
-    if (enable_nic_hwtimestamping(fd_in, interface) == -1) {
-        return -1;
+    /* Set up EAL */
+    if (setup_EAL(argv[0]) < 0) {
+        printf("[!] Error: EAL setup failed\n");
     }
 
-    if (setup_rx_timestamping(fd_in) == -1) {
-        return -1;
+    /* Configure the port and queue*/
+
+    void *mbuf_pool = create_mbuf_pool();
+    int lcore = 9;
+    int port_id = pit_port;
+    int queue_id = 0;
+
+    int rx_queue_nums = 0;
+    struct dev_state *dev_state;
+    struct queue_state *queue_state;
+
+    dev_state = &dev_state_list[port_id];
+    if (dev_state->is_existed == 1 && dev_state->is_configured != 1) {
+        configure_port(port_id);
+        dev_state->is_configured = 1;
     }
 
-    int fd_out;
-    if (pit_relay) {
-        fd_out = setup_sender(interface);
-        // Set timestamp --> Only HW_FLAG == TRUE triggers HW timestamping
-        // Mandatory for every socket
-        if (enable_nic_hwtimestamping(fd_out, interface) == -1) {
-            return -1;
-        }
-        if (setup_tx_timestamping(fd_out) == -1) {
-            return -1;
-        }
+    queue_state = &dev_state->rxq_state[queue_id];
+    if (queue_state->is_existed == 1 && queue_state->is_configured != 1) {
+        configure_rx_queue(port_id, queue_id, NUM_RX_DESC, mbuf_pool);
+        queue_state->is_configured = 1;
+        rx_queue_nums++;
     }
 
-    // -------------- START MAIN LOOP --------------
-    int count = 0;
-    char buffer[pit_payload_size];
-    struct timespec current_t;
+    start_port(port_id);
 
-    while (1) {
-        if (pit_loopback) {
-            printf("[ ---- Iter-%10d ---------------------- ]\n", count++);
-            clock_gettime(CLOCK_TAI, &current_t);
-            printf("SW-RECV    TIMESTAMP %ld.%09ld\n", current_t.tv_sec, current_t.tv_nsec);
-            recv_single(fd_in, address, buffer);
-            printf("SEQUENCE      NUMBER %s\n", buffer);
-        } else {
-            recv_single(fd_in, address, buffer);
-            if (count % 1000 == 0) {
-                printf("recv pkts: %d --- pkt index %s\n", count, buffer);
-            }
-            count++;
-        }
+    enable_synchronization(port_id);
 
-        // if (pit_relay)
-        // {
-        //     send_single(fd_out, address, port);
-        // }
-    }
+    void *pkt = allocate_packet(mbuf_pool);
+
+    struct rx_loop_args rx_args = {
+        .port_id = port_id,
+        .queue_id = queue_id,
+        .pkts = &pkt,
+        .mbuf_pool = mbuf_pool};
+
+    rx_loop(&rx_args);
 }

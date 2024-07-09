@@ -24,7 +24,7 @@ Created:  2024-01-14T19:09:29.323Z
 
 #define MAX_AVAILABLE_PORTS 4
 #define NUM_MBUF_ELEMENTS 1024
-#define NUM_TX_QUEUE 2
+#define NUM_TX_QUEUE 0
 #define NUM_RX_QUEUE 1
 #define NUM_TX_DESC 32
 #define NUM_TX_SYNC_DESC 256
@@ -71,6 +71,7 @@ void configure_rx_queue(int port_id, int queue_id, int num_desc, void *mbuf_pool
 void check_offload_capabilities(int port_id);
 void enable_synchronization(int port_id);
 void *allocate_packet(void *mbuf_pool);
+int free_packet(void *pkt);
 void prepare_packet_payload(void *pkt, const char *msg, size_t msg_size);
 void prepare_packet_header(void *pkt, int msg_size,
                            struct interface_config *dev_config);
@@ -78,10 +79,13 @@ void prepare_packet_offload(void *pkt, int txtime_enabled, int timestamp_enabled
 int sche_single(void *pkt, struct interface_config *dev_config,
                 uint64_t txtime,
                 char msg[], const int msg_size);
+int recv_single(void *pkt, struct interface_config *interface, uint64_t *txtime,
+                char msg[], int *flag);
 void sleep(uint64_t ns);
 // void sleep_seconds(uint64_t seconds);
 void read_clock(int port, uint64_t *time);
 int get_tx_hardware_timestamp(int port_id, uint64_t *txtime);
+int get_rx_hardware_timestamp(int port_id, uint64_t *rxtime, uint32_t flags);
 char *get_mac_addr(int port_id);
 void cleanup_dpdk(int port_id, void *mbuf_pool);
 
