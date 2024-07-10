@@ -70,7 +70,7 @@ void configure_port(int port_id) {
         port_conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
     }
 
-    if (dev_info.rx_offload_capa & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+     if (dev_info.rx_offload_capa & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
         port_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
     }
 
@@ -290,12 +290,11 @@ int recv_single(void *pkt, struct interface_config *interface, uint64_t *txtime,
 
     int num_recv = rte_eth_rx_burst(port_id, queue_id, &mbuf, 1);
 
-    if (num_recv > 0 && mbuf->ol_flags & RTE_MBUF_F_RX_IEEE1588_PTP) {
-        printf("PTP packet\n");
+    // && mbuf->ol_flags & RTE_MBUF_F_RX_IEEE1588_TMST
+    if (num_recv > 0 ) {
         *flag = mbuf->timesync;
     } else {
         *flag = -1;
-        // *flag = 0;
     }
 
     return num_recv;
@@ -322,6 +321,9 @@ int get_tx_hardware_timestamp(int port_id, uint64_t *txtime) {
 int get_rx_hardware_timestamp(int port_id, uint64_t *rx_time, uint32_t flags) {
     int count = 0;
     struct timespec ts;
+
+    // int err = rte_eth_timesync_read_rx_timestamp(port_id, &ts, flags);
+    // printf("err: %d\n", err);
 
     while (rte_eth_timesync_read_rx_timestamp(port_id, &ts, flags) != 0 && count < HW_TIMESTAMP_TRY_TIMES) {
         count++;
