@@ -70,7 +70,7 @@ int rx_loop(void *args) {
         if (recv_single(pkts[0], interface, &recv_time, msg, &flag) == 1) {
             read_clock(port_id, &current_time);
             printf("SW   TIMESTAMP %lld.%09lld\n", current_time / ONE_SECOND_IN_NS, current_time % ONE_SECOND_IN_NS);
-            printf("pit_hw %d, flag %d\n", pit_hw, flag);
+            // printf("pit_hw %d, flag %d\n", pit_hw, flag);
             if (pit_hw && flag >= 0 && get_rx_hardware_timestamp(port_id, &recv_time, flag) == 0) {
                 printf("HW   TIMESTAMP %lld.%09lld\n", recv_time / ONE_SECOND_IN_NS, recv_time % ONE_SECOND_IN_NS);
             }
