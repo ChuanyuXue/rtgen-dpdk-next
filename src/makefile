@@ -17,31 +17,31 @@ listener: $(BUILDDIR)/listener.o $(BUILDDIR)/flow.o  $(BUILDDIR)/engine.o $(BUIL
 
 # Define the object files
 $(BUILDDIR)/sche.o: sche.c sche.h flow.h
-	$(CC) -c -o $@ $<
+	$(CC) -c -o $@ $< $(DEBUG)
 
 $(BUILDDIR)/flow.o: flow.c flow.h 
-	$(CC) -c -o $@ $<
+	$(CC) -c -o $@ $< $(DEBUG)
 
 $(BUILDDIR)/talker.o: talker.c talker.h  flow.h
-	$(CC) -c -o $@ $<
+	$(CC) -c -o $@ $< $(DEBUG)
 
 $(BUILDDIR)/engine.o: engine_dpdk.c engine_dpdk.h  flow.h
-	$(CC) -c -o $@ $< $(DPDK_CFLAGS)
+	$(CC) -c -o $@ $< $(DPDK_CFLAGS) $(DEBUG)
 
 $(BUILDDIR)/header.o: header_dpdk.c header_dpdk.h
-	$(CC) -c -o $@ $< $(DPDK_CFLAGS) 
+	$(CC) -c -o $@ $< $(DPDK_CFLAGS) $(DEBUG)
 
 $(BUILDDIR)/sync.o: ptpclient_dpdk.c ptpclient_dpdk.h
-	$(CC) -c -o $@ $< $(DPDK_CFLAGS)
+	$(CC) -c -o $@ $< $(DPDK_CFLAGS) $(DEBUG)
 
 $(BUILDDIR)/listener.o: listener.c  flow.h
-	$(CC) -c -o $@ $<
+	$(CC) -c -o $@ $< $(DEBUG)
 
 $(BUILDDIR)/utility.o: utility.c utility.h
-	$(CC) -c -o $@ $<
+	$(CC) -c -o $@ $< $(DEBUG)
 
 $(BUILDDIR)/statistic.o: statistic.c statistic.h
-	$(CC) -c -o $@ $<
+	$(CC) -c -o $@ $< $(DEBUG)
 
 # Define the clean target
 clean:
