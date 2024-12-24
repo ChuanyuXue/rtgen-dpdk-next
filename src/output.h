@@ -55,7 +55,7 @@ int handle_terminal_out(
     FILE *fd, 
     struct statistic_core *stats,
     struct terminal_out_args *to_args,
-    struct timespec *curr_time, 
+    uint64_t curr_time, 
     int update_time);
     
 #endif

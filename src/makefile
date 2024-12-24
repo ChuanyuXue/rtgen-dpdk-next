@@ -9,7 +9,7 @@ BUILDDIR = ../build
 $(shell mkdir -p $(BUILDDIR))
 
 # Define the executables
-talker: $(BUILDDIR)/talker.o $(BUILDDIR)/flow.o  $(BUILDDIR)/engine.o $(BUILDDIR)/sche.o $(BUILDDIR)/utility.o $(BUILDDIR)/header.o $(BUILDDIR)/sync.o $(BUILDDIR)/statistic.o
+talker: $(BUILDDIR)/talker.o $(BUILDDIR)/flow.o  $(BUILDDIR)/engine.o $(BUILDDIR)/sche.o $(BUILDDIR)/utility.o $(BUILDDIR)/header.o $(BUILDDIR)/sync.o $(BUILDDIR)/statistic.o $(BUILDDIR)/output.o $(BUILDDIR)/conio.o
 	$(CC) -o $(BUILDDIR)/$@ $^ $(DPDK_LIBS) $(DEBUG)
 
 listener: $(BUILDDIR)/listener.o $(BUILDDIR)/flow.o  $(BUILDDIR)/engine.o $(BUILDDIR)/utility.o $(BUILDDIR)/header.o $(BUILDDIR)/sync.o $(BUILDDIR)/statistic.o
@@ -41,6 +41,12 @@ $(BUILDDIR)/utility.o: utility.c utility.h
 	$(CC) -c -o $@ $< $(DEBUG)
 
 $(BUILDDIR)/statistic.o: statistic.c statistic.h
+	$(CC) -c -o $@ $< $(DEBUG)
+
+$(BUILDDIR)/output.o: output.c output.h
+	$(CC) -c -o $@ $< $(DEBUG)
+
+$(BUILDDIR)/conio.o: ../lib/conio/conio.c ../lib/conio/conio.h
 	$(CC) -c -o $@ $< $(DEBUG)
 
 # Define the clean target

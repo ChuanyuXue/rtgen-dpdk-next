@@ -3,12 +3,20 @@
 int COLUMN_WIDTH = 22;
 int COLUMN_COUNT = 4;
 int OUTPUT_BUFFER = 4096; //32 lines * 5 columns * Column Width and rounded to nearest power of 2
+int FLAG_CLEAR_OUTPUT_CURSOR_SAVED=0;
 
 void clear_output()
 {
-    //system ( "clear" ); // "CLS"
-    //printf("\033[2J\033[1;1H");
-    clearScreen();
+    //This function must be called before displayed output in the loop
+    if(!FLAG_CLEAR_OUTPUT_CURSOR_SAVED)
+    {
+        printf("\0337"); //Saves cursor position
+        fflush(stdout);
+        FLAG_CLEAR_OUTPUT_CURSOR_SAVED = 1;
+    }
+
+    printf("\0338\033[0J"); //Returns to cursor position and clears below it
+    fflush(stdout);
 }
 
 int get_int_len(int value){
@@ -81,7 +89,7 @@ char keyboard_input()
     return ' ';
 }
 
-int handle_terminal_out(FILE *fd, struct statistic_core *stats, struct terminal_out_args *to_args, struct timespec *curr_time, int update_time)
+int handle_terminal_out(FILE *fd, struct statistic_core *stats, struct terminal_out_args *to_args, uint64_t curr_time, int update_time)
 {
     /*Keyboard Inputs*/
     char kb_input = keyboard_input();
@@ -97,6 +105,8 @@ int handle_terminal_out(FILE *fd, struct statistic_core *stats, struct terminal_
         if(to_args->start_col+COLUMN_COUNT-1<num_cols)
             to_args->start_col++;
         break;
+    case 'q':
+        //TODO Quit
     default:
         if( kb_input >= '0' && kb_input <= '9' ){
             to_args->core = (int)kb_input-48; //TODO implement multicore
@@ -106,8 +116,7 @@ int handle_terminal_out(FILE *fd, struct statistic_core *stats, struct terminal_
 
     /*Update Timer*/
     //Only update output if a second or more has passed since last update
-    uint64_t curr_time_int = curr_time->tv_sec * ONESEC + curr_time->tv_nsec;
-    if(curr_time_int < to_args->prev_time+update_time)
+    if(curr_time < to_args->prev_time+update_time)
     {
         return 0;
     }
@@ -121,7 +130,6 @@ int handle_terminal_out(FILE *fd, struct statistic_core *stats, struct terminal_
     
 
     int flow_id_arr[num_cols];
-    char* interface_name_array[num_cols];
 
     uint64_t pkt_total_arr[num_cols];
     uint64_t pkt_send_arr[num_cols];
@@ -153,7 +161,6 @@ int handle_terminal_out(FILE *fd, struct statistic_core *stats, struct terminal_
         struct interface_config *net = flow->net;   
 
         flow_id_arr[flow_id] = flow_id;
-        interface_name_array[flow_id] = net->interface_name;
 
         pkt_total_arr[flow_id] = stats->st[flow_id].num_pkt_total;
         pkt_send_arr[flow_id] = stats->st[flow_id].num_pkt_send;
@@ -174,8 +181,8 @@ int handle_terminal_out(FILE *fd, struct statistic_core *stats, struct terminal_
         avg_jitter_sw_arr[flow_id] = stats->st[flow_id].avg_jitter_sw;
         max_jitter_sw_arr[flow_id] = stats->st[flow_id].max_jitter_sw;
 
-        dst_arr[flow_id] = net->address_dst;
-        src_arr[flow_id] = net->address_src;
+        dst_arr[flow_id] = net->ip_dst;
+        src_arr[flow_id] = net->ip_src;
         dst_port_arr[flow_id] = net->port_dst;
         src_port_arr[flow_id] = net->port_src;
     }
@@ -186,14 +193,14 @@ int handle_terminal_out(FILE *fd, struct statistic_core *stats, struct terminal_
 
     if(stream==NULL)
     {
-        die("output tmpfile NULL");
+        printf("output tmpfile NULL");
         return 1;
     }
 
     
     fprintf(stream, "%s\n", "-----Terminal Output-----");
     fprintf(stream, "%-*s:   %c\n", COLUMN_WIDTH, "Keyboard Char Pressed", kb_input);
-    fprintf(stream, "%-*s:%*ld\n", COLUMN_WIDTH, "Current Unix Time", COLUMN_WIDTH, curr_time->tv_sec);
+    fprintf(stream, "%-*s:%*ld\n", COLUMN_WIDTH, "Current Unix Time", COLUMN_WIDTH, curr_time);
 
     //Headers
     fprintf(stream, "%-*s:", COLUMN_WIDTH, "    Core");
@@ -203,11 +210,6 @@ int handle_terminal_out(FILE *fd, struct statistic_core *stats, struct terminal_
     for(int i=start_col; i<end_col; i++)
         fprintf(stream, "%*s---Flow%d---", COLUMN_WIDTH-10, "", flow_id_arr[i]);
     fprintf(stream, "\n");
-
-    
-
-    fprintf(stream, "%-*s:", COLUMN_WIDTH, "Network Interface");
-    to_print_row_str(stream, "%*s", interface_name_array, start_col, end_col);
 
     /*Stats*/
     //Pkt 
@@ -286,7 +288,7 @@ int handle_terminal_out(FILE *fd, struct statistic_core *stats, struct terminal_
     fclose(stream);
     /*---------End Print---------*/
     
-    to_args->prev_time = curr_time_int;
+    to_args->prev_time = curr_time;
 
     return 0;
 }

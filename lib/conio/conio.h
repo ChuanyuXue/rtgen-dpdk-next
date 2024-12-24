@@ -109,7 +109,7 @@ I need help for
 //#define __CONIO4LINUX_H
 
 #include <stdio.h>
-#include <unistd.h>
+//#include <unistd.h>
 #include <fcntl.h>
 #include <termios.h>
 
@@ -133,7 +133,7 @@ I need help for
 
 #define background_color 0
 
-
+#define STDIN_FILENO 0
 
 void clearLine();
 
