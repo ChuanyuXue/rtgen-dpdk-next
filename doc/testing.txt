@@ -1,0 +1,19 @@
+for talker.c: 
+-i: can only put in 0 for the port id? 
+Other numbers result in an error. 
+Strings work fine?
+
+-q: throws an error if I put an int other than 0 - is this because we define 1 queue in flow.h?
+
+--mac-dst: throws an error
+
+-k: I think testing priority works
+
+-d: seems to work for any ip address?
+Even invalid ones - really any numbers in general (or strings)
+
+-l: when I tried a traffic payload size of 10000, it gave confusing behavior. 
+It seemed like packets weren't being sent. 
+Trying negative numbers resulted in a segfault - implement error handling?
+
+-h: works 
