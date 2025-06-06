@@ -33,8 +33,11 @@ void usage(char *progname) {
             " -w, --no-stamp              disable Hardware Timestamping\n"
             " -h, --help                  prints this message and exits\n"
             "\n",
-            progname, DEFAULT_TIME_DELTA, DEFAULT_PERIOD, DEFAULT_PAYLOAD,
-            DEFAULT_PRIORITY);
+            progname, DEFAULT_PRIORITY, DEFAULT_TIME_DELTA, DEFAULT_PERIOD,
+            DEFAULT_PAYLOAD);
+
+            //progname, DEFAULT_TIME_DELTA, DEFAULT_PERIOD, DEFAULT_PAYLOAD,
+            //DEFAULT_PRIORITY);
 }
 
 int parser(int argc, char *argv[]) {
@@ -43,12 +46,18 @@ int parser(int argc, char *argv[]) {
     char *progname = strrchr(argv[0], '/');
     progname = progname ? 1 + progname : argv[0];
 
+    int count=0;
     while (true) {
         if (c == -1)
             break;  // No more options
 
         c = getopt_long(argc, argv, "i:q:k:d:p:o:t:b:l:m:avswh",
                         long_options, &option_index);
+        
+        if (c != -1 && c != 'a' && c != 'v' && c != 's' && c != 'w' && c != 'h' && !optarg){
+            c = '?';
+        }
+
         switch (c) {
             case 'i':
                 pit_port = atoi(optarg);
