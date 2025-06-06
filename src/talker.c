@@ -33,8 +33,11 @@ void usage(char *progname) {
             " -w, --no-stamp              disable Hardware Timestamping\n"
             " -h, --help                  prints this message and exits\n"
             "\n",
-            progname, DEFAULT_TIME_DELTA, DEFAULT_PERIOD, DEFAULT_PAYLOAD,
-            DEFAULT_PRIORITY);
+            progname, DEFAULT_PRIORITY, DEFAULT_TIME_DELTA, DEFAULT_PERIOD,
+            DEFAULT_PAYLOAD);
+
+            //progname, DEFAULT_TIME_DELTA, DEFAULT_PERIOD, DEFAULT_PAYLOAD,
+            //DEFAULT_PRIORITY);
 }
 
 int parser(int argc, char *argv[]) {
