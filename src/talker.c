@@ -46,12 +46,18 @@ int parser(int argc, char *argv[]) {
     char *progname = strrchr(argv[0], '/');
     progname = progname ? 1 + progname : argv[0];
 
+    int count=0;
     while (true) {
         if (c == -1)
             break;  // No more options
 
         c = getopt_long(argc, argv, "i:q:k:d:p:o:t:b:l:m:avswh",
                         long_options, &option_index);
+        
+        if (c != -1 && c != 'a' && c != 'v' && c != 's' && c != 'w' && c != 'h' && !optarg){
+            c = '?';
+        }
+
         switch (c) {
             case 'i':
                 pit_port = atoi(optarg);
