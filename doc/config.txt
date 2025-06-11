@@ -50,3 +50,6 @@ ifconfig
 
 //run on RP
 sudo tcpdump -i enp1s0
+
+sudo tcpdump -Q in -tt -ni enp1s0 --time-stamp-precision=nano -j adapter_unsynced -s 16 -B 2097151
+//use -ttt tp check time between 
