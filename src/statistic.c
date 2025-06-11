@@ -35,7 +35,7 @@ struct statistic_core* init_statistics(int num_flows, int core_id, int queue_id)
         stats->st[i].pps = 0.0;
         stats->st[i].bps = 0.0;
         stats->st[i].num_pkt_total = 0;
-        stats->st[i].num_pkt_send = 0;
+        stats->st[i].num_pkt_send = 1;
         stats->st[i].num_pkt_drop = 0;
         stats->st[i].num_pkt_misdl = 0;
         stats->st[i].jitter_hw = 0;
