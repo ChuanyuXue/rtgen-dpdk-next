@@ -1,0 +1,23 @@
+This file is to log testing and results of running talker.c with the -m tag 
+
+
+When it comes to the offset value, going lower than 60 microseconds causes the overall 
+timing of the program to become unstable.
+
+If the delta value is lower than the period, it causes each packet to be sent at around 
+1 milisecond, regardless of offset value.
+
+Can have at most two queues because of the hardcoded tx_queue value.
+Can run multiple flows on the same queue.
+
+Can only have a port number of 0, everything else causes an error 
+
+mac-dst does seem to affect anything
+same with port-dst and ip-dst
+
+Changing size of packet works
+
+Don't see any issues that are different from changing options in talker.c 
+
+Sending multiple packets at the same time will only send the first one, even if they are 
+in different queues
