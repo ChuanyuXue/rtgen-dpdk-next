@@ -31,6 +31,7 @@ void usage(char *progname) {
             " -v, --no-loop               disable loopback\n"
             " -s, --no-rt                 disable ETF scheduler\n"
             " -w, --no-stamp              disable Hardware Timestamping\n"
+            " -c                          disable Stats Output\n"
             " -h, --help                  prints this message and exits\n"
             "\n",
             progname, DEFAULT_PRIORITY, DEFAULT_TIME_DELTA, DEFAULT_PERIOD,
@@ -125,6 +126,9 @@ int parser(int argc, char *argv[]) {
                 break;
             case 'w':
                 pit_hw = 0;
+                break;
+            case 'c':
+                display_output = 0;
                 break;
             case 'h':
                 usage(progname);
@@ -290,6 +294,11 @@ int tx_loop(void *args) {
     }
     int ret;
 
+    //initialize terminal output args
+    struct terminal_out_args *to_args = create_terminal_out_args(
+        state
+    );
+
     struct flow *flow;
     printf("Lcore id: %d: current_time: %lu\n", lcore_id, current_time);
     printf("Number of frames: %ld\n", schedule->num_frames_per_cycle);
@@ -336,7 +345,7 @@ int tx_loop(void *args) {
             }
 
             read_clock(port_id, &current_time);
-            printf("current time before tx: %lu\n", current_time);
+            //printf("current time before tx: %lu\n", current_time);
 
             if (sche_single(pkts[flow_id], flow->net, txtime, NULL, 0) != 1) {
                 update_nums(stats, flow_id, 0, 1);
@@ -345,14 +354,17 @@ int tx_loop(void *args) {
                 update_nums(stats, flow_id, 0, 0);
                 if (pit_hw && get_tx_hardware_timestamp(port_id, &hwtimestamp) == 0) {
                     update_time_hw(stats, flow_id, hwtimestamp, txtime);
-                    printf("txtime: %lu\n", txtime);
-                    printf("hardware timestamp: %lu\n", hwtimestamp);
+                    //printf("txtime: %lu\n", txtime);
+                    //printf("hardware timestamp: %lu\n", hwtimestamp);
                     if (prev_hwtime[flow_id] != 0) {
                         update_jitter_hw_st(stats, flow_id, prev_hwtime[flow_id], hwtimestamp, flow->period);
                     }
                     prev_hwtime[flow_id] = hwtimestamp;
                 }
             }
+
+            if (display_output)
+                handle_terminal_out(stdout, stats, to_args, current_time, 1000000000ULL);
         }
     }
 }
