@@ -35,9 +35,6 @@ void usage(char *progname) {
             "\n",
             progname, DEFAULT_PRIORITY, DEFAULT_TIME_DELTA, DEFAULT_PERIOD,
             DEFAULT_PAYLOAD);
-
-            //progname, DEFAULT_TIME_DELTA, DEFAULT_PERIOD, DEFAULT_PAYLOAD,
-            //DEFAULT_PRIORITY);
 }
 
 int parser(int argc, char *argv[]) {
