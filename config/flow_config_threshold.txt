@@ -1,0 +1,10 @@
+# Format
+#            port queue mac-dst vlan priority ip-dst port-src port-dst delta period offset size   
+# Example:
+#            0 0 00:00:00:00:00:00 0 0 - - - 1000000 1000000000 0.0 200 
+
+0 0 00:00:00:00:00:00 - - - - - 300000 10000000 0.0 100
+0 1 00:00:00:00:00:00 - - - - - 300000 10000000 0.000005000 200
+
+# Using multiple cores, the threshhold before it becomes unstable is around 3 milliseconds 
+# This is using an Intel I225 pci ethernet controller on an x86 Dell Optiplex
