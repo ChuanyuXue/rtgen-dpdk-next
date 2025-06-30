@@ -495,17 +495,17 @@ int main(int argc, char *argv[]) {
 
         stats_list[queue_id] = stats;
 
-        struct tx_loop_args tx_args = {
-            .port_id = pit_port,
-            .queue_id = queue_id,
-            .base_time = base_time,
-            .state = state,
-            .schedule_state = &schedule[queue_id],
-            .stats = stats,
-            .pkts = pkts,
-        };
+        struct tx_loop_args* tx_args = malloc(sizeof(struct tx_loop_args));  
+            tx_args->port_id = pit_port;
+            tx_args->queue_id = queue_id;
+            tx_args->base_time = base_time;
+            tx_args->state = state;
+            tx_args->schedule_state = &schedule[queue_id];
+            tx_args->stats = stats;
+            tx_args->pkts = pkts;
+        
         printf("\nLcore id: %d from main\n", lcore);
-        int ret = rte_eal_remote_launch(tx_loop, &tx_args, lcore++);
+        int ret = rte_eal_remote_launch(tx_loop, tx_args, lcore++);
     }
 
     // printf("Printing stats\n");
