@@ -1,3 +1,5 @@
+# This file contains various commands that are used when configuring the code
+
 cd /home/ubuntu/DPDK/dpdk/usertools
 
 sudo modprobe vfio
@@ -29,15 +31,7 @@ make -C /lib/modules/`uname -r`/build M=$PWD
 //remove if folder already ex
 sudo rm -rf /lib/modules/5.15.0-1078-raspi/kernel/drivers/net/igb/
 
-
 cd /home/ubuntu/tool;sudo mkdir /lib/modules/`uname -r`/kernel/drivers/net/igb/;sudo cp ./igb.ko /lib/modules/`uname -r`/kernel/drivers/net/igb/igb.ko;sudo depmod -a;sudo modprobe i2c_algo_bit;sudo modprobe igb
-
- sudo ip addr add 192.168.0.139/24 dev enp1s0
-
-
-ssh ubuntu@192.168.50.11
-passwd: 1234567809
-
 
 //check which drivers are running on dpdk
 dpdk-devbind.py --status
