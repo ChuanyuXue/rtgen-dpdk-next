@@ -8,7 +8,7 @@ Created:  2024-04-17T18:06:52.943Z
 #include "statistic.h"
 
 struct statistic_core* init_statistics(int num_flows, int core_id, int queue_id) {
-    struct statistic_core* stats = (struct statistic_core*)malloc(sizeof(struct statistic_core));
+    struct statistic_core* stats = (struct statistic_core*)malloc(sizeof(struct statistic_core) + 1);
 
     if (stats == NULL) {
         return NULL;
@@ -22,7 +22,12 @@ struct statistic_core* init_statistics(int num_flows, int core_id, int queue_id)
     stats->is_sync_running = 0;
     stats->core_utilization = 0.0;
 
-    stats->st = (struct stat_st*)malloc((num_flows + 1) * sizeof(struct stat_st));
+    // printf("request: %d\n", 10 * sizeof(struct stat_st) +1);
+
+    //TODO: figure out why malloc doesn't work with multicore without extreme overhead
+    struct stat_st* temp = (struct stat_st*)malloc((num_flows + 1) * sizeof(struct stat_st) + 440);
+    stats->st = temp;
+
     if (stats->st == NULL) {
         printf("[!]Failed to allocate memory for statistics\n");
         free(stats);
@@ -35,7 +40,7 @@ struct statistic_core* init_statistics(int num_flows, int core_id, int queue_id)
         stats->st[i].pps = 0.0;
         stats->st[i].bps = 0.0;
         stats->st[i].num_pkt_total = 0;
-        stats->st[i].num_pkt_send = 0;
+        stats->st[i].num_pkt_send = 1;
         stats->st[i].num_pkt_drop = 0;
         stats->st[i].num_pkt_misdl = 0;
         stats->st[i].jitter_hw = 0;

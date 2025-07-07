@@ -1,10 +1,17 @@
-sudo ifconfig enp4s0 down
+# This file contains various commands that are used when configuring the code
+
+cd /home/ubuntu/DPDK/dpdk/usertools
+
+sudo modprobe vfio
+sudo modprobe vfio-pci
+
+sudo ifconfig enp1s0 down
 sudo python3 dpdk-hugepages.py --setup 4G
 sudo echo 1 | sudo tee /sys/module/vfio/parameters/enable_unsafe_noiommu_mode
-sudo python3 dpdk-devbind.py -b=vfio-pci 0000:04:00.0
+sudo python3 dpdk-devbind.py -b=vfio-pci 0000:01:00.0
 
 
-echo 1 | sudo tee /sys/bus/pci/devices/0000:04:00.0/remove
+echo 1 | sudo tee /sys/bus/pci/devices/0000:01:00.0/remove
 echo 1 | sudo tee /sys/bus/pci/rescan
 
 
@@ -14,12 +21,29 @@ set args --multi-flow="../../config/flow_config.txt" --delta=1500000
 sudo systemctl stop systemd-timesyncd
 sudo systemctl stop ntp
 
+
+//recompile driver for kernel for RP
 cd /home/ubuntu/tool
 rm *.ko
 rm *.o
 make -C /lib/modules/`uname -r`/build M=$PWD
 
+//remove if folder already ex
+sudo rm -rf /lib/modules/5.15.0-1078-raspi/kernel/drivers/net/igb/
 
 cd /home/ubuntu/tool;sudo mkdir /lib/modules/`uname -r`/kernel/drivers/net/igb/;sudo cp ./igb.ko /lib/modules/`uname -r`/kernel/drivers/net/igb/igb.ko;sudo depmod -a;sudo modprobe i2c_algo_bit;sudo modprobe igb
 
- sudo ip addr add 192.168.0.139/24 dev enp1s0
+//check which drivers are running on dpdk
+dpdk-devbind.py --status
+
+//list hardware devices
+lspci
+
+//list network devices
+ifconfig
+
+//run on RP
+sudo tcpdump -i enp1s0
+
+sudo tcpdump -Q in -tt -ni enp1s0 --time-stamp-precision=nano -j adapter_unsynced -s 16 -B 2097151
+//use -ttt tp check time between 

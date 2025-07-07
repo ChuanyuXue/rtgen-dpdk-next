@@ -163,14 +163,14 @@ void init_schedule_state_per_queue(struct schedule_state *schedule_state, const 
     }
 
     sort(sending_time, order, num_frames);
-    printf("queue_index: %d \n", queue_index);
+    printf("\nqueue_index: %d \n", queue_index);
     print_schedule_state(schedule_state);
 }
 
 void print_schedule_state(const struct schedule_state *schedule_state) {
     printf("cycle_period: %lu\n", schedule_state->cycle_period);
     printf("num_frames_per_cycle: %lu\n", schedule_state->num_frames_per_cycle);
-    printf("order: \n");
+    printf("Flow order: ");
     for (unsigned int i = 0; i < schedule_state->num_frames_per_cycle; i++) {
         printf("%d ", schedule_state->order[i]);
     }
