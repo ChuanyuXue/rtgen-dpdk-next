@@ -115,6 +115,11 @@ int main(int argc, char *argv[]) {
         rx_queue_nums++;
     }
 
+    // Need to configure tx queues or else starting ports will fail
+    for (int i = 0; i < NUM_TX_QUEUE; i++){
+        configure_tx_queue(port_id, i, NUM_TX_DESC);
+    }
+
     start_port(port_id);
 
     enable_synchronization(port_id);
