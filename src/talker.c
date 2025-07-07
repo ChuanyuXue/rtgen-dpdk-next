@@ -15,7 +15,7 @@ void usage(char *progname) {
             " -i, --port       [int]      port ID\n"
             " -q, --queue      [int]      queue ID\n"
             " --mac-dst	       [str]      destination mac address\n"
-            " --vlan           [int]      vlan ID\n"
+            " --vlan           [int]      vlan ID (range [0, 4095])\n"
             " -k, --priority   [int]      traffic SO_PRIORITY (default %d)\n"
             " -d, --ip-dst     [str]      destination ip address\n"
             " -p, --port-dst   [int]      remote port number\n"
